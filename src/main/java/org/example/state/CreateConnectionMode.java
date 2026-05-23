@@ -45,6 +45,7 @@ public class CreateConnectionMode implements ToolState {
             if (endPort != null && endPort.getParent() != startPort.getParent()) {
                 RelationshipLine line = new RelationshipLine(startPort, endPort, lineType);
                 canvas.addLine(line);
+                canvas.triggerActionCompleted();
             }
             startPort = null;
             canvas.repaint();

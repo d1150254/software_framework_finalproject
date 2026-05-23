@@ -74,6 +74,12 @@ public class Main extends Application {
         btnSelect.setSelected(true);
         canvas.setState(new SelectMode(canvas));
         
+        // Listen to action completed and revert to select mode
+        canvas.setOnActionCompleted(() -> {
+            btnSelect.setSelected(true);
+            canvas.setState(new SelectMode(canvas));
+        });
+        
         // Ensure buttons have same width
         toolbar.getChildren().forEach(node -> {
             if (node instanceof ToggleButton) {

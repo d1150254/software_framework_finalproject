@@ -19,6 +19,8 @@ public class UMLCanvas extends Pane {
     
     private ToolState currentState;
     
+    private Runnable onActionCompleted;
+
     public interface SelectionListener {
         void onSelectionChanged(BasicObject selectedObject);
     }
@@ -39,6 +41,16 @@ public class UMLCanvas extends Pane {
 
     public void setState(ToolState state) {
         this.currentState = state;
+    }
+
+    public void setOnActionCompleted(Runnable onActionCompleted) {
+        this.onActionCompleted = onActionCompleted;
+    }
+
+    public void triggerActionCompleted() {
+        if (onActionCompleted != null) {
+            onActionCompleted.run();
+        }
     }
 
     public void setSelectionListener(SelectionListener listener) {

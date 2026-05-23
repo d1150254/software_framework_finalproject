@@ -16,6 +16,7 @@ public class CreateInterfaceMode implements ToolState {
         UMLInterface ui = new UMLInterface(e.getX(), e.getY());
         canvas.addObject(ui);
         canvas.repaint();
+        canvas.triggerActionCompleted();
     }
 
     @Override

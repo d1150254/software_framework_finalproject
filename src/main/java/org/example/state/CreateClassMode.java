@@ -16,6 +16,7 @@ public class CreateClassMode implements ToolState {
         UMLClass c = new UMLClass(e.getX(), e.getY());
         canvas.addObject(c);
         canvas.repaint();
+        canvas.triggerActionCompleted();
     }
 
     @Override

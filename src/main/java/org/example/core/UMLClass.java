@@ -24,6 +24,12 @@ public class UMLClass extends BasicObject {
     public void addAttribute(UMLAttribute attr) { attributes.add(attr); }
     public void addMethod(UMLMethod method) { methods.add(method); }
 
+    public List<UMLAttribute> getAttributes() { return attributes; }
+    public List<UMLMethod> getMethods() { return methods; }
+    
+    public void removeAttribute(UMLAttribute attr) { attributes.remove(attr); }
+    public void removeMethod(UMLMethod method) { methods.remove(method); }
+
     /**
      * Adjusts the height of the class dynamically to ensure text fits inside.
      */

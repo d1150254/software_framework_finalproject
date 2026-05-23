@@ -13,11 +13,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class UMLCanvas extends Pane {
-    private Canvas canvas;
-    private List<BasicObject> objects;
-    private List<RelationshipLine> lines;
+    private final Canvas canvas;
+    private final List<BasicObject> objects;
+    private final List<RelationshipLine> lines;
     
     private ToolState currentState;
+    
+    public interface SelectionListener {
+        void onSelectionChanged(BasicObject selectedObject);
+    }
+    private SelectionListener selectionListener;
 
     public UMLCanvas(double width, double height) {
         canvas = new Canvas(width, height);
@@ -34,6 +39,16 @@ public class UMLCanvas extends Pane {
 
     public void setState(ToolState state) {
         this.currentState = state;
+    }
+
+    public void setSelectionListener(SelectionListener listener) {
+        this.selectionListener = listener;
+    }
+
+    public void notifySelectionChanged(BasicObject obj) {
+        if (selectionListener != null) {
+            selectionListener.onSelectionChanged(obj);
+        }
     }
 
     public void setCursorStyle(Cursor cursor) {

@@ -21,6 +21,10 @@ public class UMLInterface extends BasicObject {
     
     public void addMethod(UMLMethod method) { methods.add(method); }
 
+    public List<UMLMethod> getMethods() { return methods; }
+    
+    public void removeMethod(UMLMethod method) { methods.remove(method); }
+
     /**
      * Adjusts the height of the interface dynamically to ensure text fits inside.
      */

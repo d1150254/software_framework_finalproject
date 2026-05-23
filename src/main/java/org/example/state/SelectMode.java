@@ -7,7 +7,7 @@ import org.example.core.BasicObject;
 import org.example.core.ResizeZone;
 
 public class SelectMode implements ToolState {
-    private UMLCanvas canvas;
+    private final UMLCanvas canvas;
     private BasicObject selectedObject;
     private double lastX, lastY;
     private boolean isResizing = false;
@@ -30,6 +30,7 @@ public class SelectMode implements ToolState {
         selectedObject = null;
         canvas.clearSelection();
         isResizing = false;
+        canvas.notifySelectionChanged(null); // Notify null if clicking empty space
 
         // Traverse backwards to pick front-most object
         for (int i = canvas.getObjects().size() - 1; i >= 0; i--) {
@@ -37,11 +38,7 @@ public class SelectMode implements ToolState {
             if (obj.contains(e.getX(), e.getY())) {
                 selectedObject = obj;
                 obj.setSelected(true);
-                
-                if (e.getClickCount() == 2) {
-                    org.example.ui.ObjectEditorDialog.showEditDialog(obj, () -> canvas.repaint());
-                }
-                
+                canvas.notifySelectionChanged(obj); // Notify the selected object
                 break;
             }
         }

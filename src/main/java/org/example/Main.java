@@ -3,7 +3,6 @@ package org.example;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.BorderPane;
@@ -15,6 +14,7 @@ import org.example.state.CreateClassMode;
 import org.example.state.CreateConnectionMode;
 import org.example.state.CreateInterfaceMode;
 import org.example.state.SelectMode;
+import org.example.ui.ObjectTreePanel;
 
 public class Main extends Application {
 
@@ -81,10 +81,15 @@ public class Main extends Application {
             }
         });
 
+        // Setup Tree Panel
+        ObjectTreePanel treePanel = new ObjectTreePanel(canvas);
+        canvas.setSelectionListener(obj -> treePanel.bindObject(obj));
+
         root.setLeft(toolbar);
         root.setCenter(canvas);
+        root.setRight(treePanel);
         
-        Scene scene = new Scene(root, 900, 600);
+        Scene scene = new Scene(root, 1100, 600);
         primaryStage.setTitle("UML Editor - AI Assistant");
         primaryStage.setScene(scene);
         primaryStage.show();

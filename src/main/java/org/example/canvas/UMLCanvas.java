@@ -85,6 +85,21 @@ public class UMLCanvas extends Pane {
         return lines;
     }
 
+    public void ensureCapacity(double minWidth, double minHeight) {
+        boolean changed = false;
+        if (minWidth > canvas.getWidth()) {
+            canvas.setWidth(minWidth + 200);
+            changed = true;
+        }
+        if (minHeight > canvas.getHeight()) {
+            canvas.setHeight(minHeight + 200);
+            changed = true;
+        }
+        if (changed) {
+            setPrefSize(canvas.getWidth(), canvas.getHeight());
+        }
+    }
+
     public void clearSelection() {
         for (BasicObject obj : objects) {
             obj.setSelected(false);

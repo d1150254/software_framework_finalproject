@@ -10,11 +10,12 @@ import javafx.scene.control.MenuItem;
 import org.example.canvas.UMLCanvas;
 import org.example.core.BasicObject;
 import org.example.core.ResizeZone;
+import org.example.core.lines.RelationshipLine;
 
 public class SelectMode implements ToolState {
     private final UMLCanvas canvas;
     private BasicObject selectedObject;
-    private org.example.core.lines.RelationshipLine selectedLine;
+    private RelationshipLine selectedLine;
     private double lastX, lastY;
     private boolean isResizing = false;
     private ResizeZone activeZone = ResizeZone.NONE;
@@ -60,7 +61,7 @@ public class SelectMode implements ToolState {
         // If no object is hit, check lines
         if (!hit) {
             for (int i = canvas.getLines().size() - 1; i >= 0; i--) {
-                org.example.core.lines.RelationshipLine line = canvas.getLines().get(i);
+                RelationshipLine line = canvas.getLines().get(i);
                 if (line.contains(e.getX(), e.getY())) {
                     selectedLine = line;
                     line.setSelected(true);
@@ -130,7 +131,7 @@ public class SelectMode implements ToolState {
                 }
             }
             if (!overAny) {
-                for (org.example.core.lines.RelationshipLine line : canvas.getLines()) {
+                for (RelationshipLine line : canvas.getLines()) {
                     if (line.contains(e.getX(), e.getY())) {
                         overAny = true; break;
                     }

@@ -32,8 +32,6 @@ public class CreateConnectionMode implements ToolState {
         if (startPort != null) {
             currentMouseX = e.getX();
             currentMouseY = e.getY();
-            canvas.repaint(); // In a real app we'd draw temp line in canvas repaint logic
-            // For simplicity, we just rely on the final release for now.
         }
     }
 
@@ -54,6 +52,19 @@ public class CreateConnectionMode implements ToolState {
 
     @Override
     public void onMouseMove(MouseEvent e) { }
+    
+    @Override
+    public void drawPreview(javafx.scene.canvas.GraphicsContext gc) {
+        if (startPort != null) {
+            gc.save();
+            gc.setGlobalAlpha(0.5);
+            gc.setLineDashes(5.0);
+            gc.setStroke(javafx.scene.paint.Color.GRAY);
+            gc.setLineWidth(2.0);
+            gc.strokeLine(startPort.getX(), startPort.getY(), currentMouseX, currentMouseY);
+            gc.restore();
+        }
+    }
 
     private Port findHoveredPort(double mx, double my) {
         for (BasicObject obj : canvas.getObjects()) {

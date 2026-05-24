@@ -6,6 +6,9 @@ import org.example.core.UMLInterface;
 
 public class CreateInterfaceMode implements ToolState {
     private UMLCanvas canvas;
+    private double currentMouseX = -1;
+    private double currentMouseY = -1;
+    private UMLInterface previewInterface;
 
     public CreateInterfaceMode(UMLCanvas canvas) {
         this.canvas = canvas;
@@ -24,5 +27,24 @@ public class CreateInterfaceMode implements ToolState {
     @Override
     public void onMouseRelease(MouseEvent e) { }
     @Override
-    public void onMouseMove(MouseEvent e) { }
+    public void onMouseMove(MouseEvent e) {
+        currentMouseX = e.getX();
+        currentMouseY = e.getY();
+        if (previewInterface == null) {
+            previewInterface = new UMLInterface(currentMouseX, currentMouseY);
+        } else {
+            previewInterface.setX(currentMouseX);
+            previewInterface.setY(currentMouseY);
+        }
+    }
+
+    @Override
+    public void drawPreview(javafx.scene.canvas.GraphicsContext gc) {
+        if (previewInterface != null && currentMouseX >= 0 && currentMouseY >= 0) {
+            gc.save();
+            gc.setGlobalAlpha(0.5);
+            previewInterface.draw(gc);
+            gc.restore();
+        }
+    }
 }

@@ -12,4 +12,5 @@ public interface ToolState {
     void onMouseRelease(MouseEvent e);
     void onMouseMove(MouseEvent e);
     default void onKeyPress(KeyEvent e) {}
+    default void drawPreview(javafx.scene.canvas.GraphicsContext gc) {}
 }

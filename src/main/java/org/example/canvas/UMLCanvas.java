@@ -144,5 +144,9 @@ public class UMLCanvas extends Pane {
         for (BasicObject obj : objects) {
             obj.draw(gc);
         }
+        
+        if (currentState != null) {
+            currentState.drawPreview(gc);
+        }
     }
 }

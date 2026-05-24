@@ -3,6 +3,7 @@ package org.example.canvas;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.Pane;
 import javafx.scene.Cursor;
 import org.example.core.BasicObject;
@@ -33,10 +34,37 @@ public class UMLCanvas extends Pane {
         objects = new ArrayList<>();
         lines = new ArrayList<>();
 
-        canvas.setOnMousePressed(e -> { if(currentState != null) currentState.onMousePress(e); repaint(); });
+        this.setFocusTraversable(true);
+        canvas.setFocusTraversable(true);
+
+        canvas.setOnMousePressed(e -> { 
+            this.requestFocus();
+            if(currentState != null) currentState.onMousePress(e); 
+            repaint(); 
+        });
         canvas.setOnMouseDragged(e -> { if(currentState != null) currentState.onMouseDrag(e); repaint(); });
         canvas.setOnMouseReleased(e -> { if(currentState != null) currentState.onMouseRelease(e); repaint(); });
         canvas.setOnMouseMoved(e -> { if(currentState != null) currentState.onMouseMove(e); repaint(); });
+
+        this.setOnKeyPressed(e -> {
+            if(currentState != null) currentState.onKeyPress(e);
+            repaint();
+        });
+    }
+
+    public void removeObject(BasicObject obj) {
+        if (obj == null) return;
+        
+        List<RelationshipLine> linesToRemove = new ArrayList<>();
+        for (RelationshipLine line : lines) {
+            if (line.getStartPort().getParent() == obj || line.getEndPort().getParent() == obj) {
+                linesToRemove.add(line);
+            }
+        }
+        lines.removeAll(linesToRemove);
+        objects.remove(obj);
+        notifySelectionChanged(null);
+        repaint();
     }
 
     public void setState(ToolState state) {

@@ -2,6 +2,11 @@ package org.example.state;
 
 import javafx.scene.Cursor;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.input.MouseButton;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
+import javafx.scene.control.ContextMenu;
+import javafx.scene.control.MenuItem;
 import org.example.canvas.UMLCanvas;
 import org.example.core.BasicObject;
 import org.example.core.ResizeZone;
@@ -12,6 +17,7 @@ public class SelectMode implements ToolState {
     private double lastX, lastY;
     private boolean isResizing = false;
     private ResizeZone activeZone = ResizeZone.NONE;
+    private ContextMenu contextMenu;
 
     public SelectMode(UMLCanvas canvas) {
         this.canvas = canvas;
@@ -19,6 +25,10 @@ public class SelectMode implements ToolState {
 
     @Override
     public void onMousePress(MouseEvent e) {
+        if (contextMenu != null && contextMenu.isShowing()) {
+            contextMenu.hide();
+        }
+
         lastX = e.getX();
         lastY = e.getY();
         
@@ -41,6 +51,18 @@ public class SelectMode implements ToolState {
                 canvas.notifySelectionChanged(obj); // Notify the selected object
                 break;
             }
+        }
+        
+        if (e.getButton() == MouseButton.SECONDARY && selectedObject != null) {
+            contextMenu = new ContextMenu();
+            MenuItem deleteItem = new MenuItem("Delete");
+            deleteItem.setOnAction(event -> {
+                canvas.removeObject(selectedObject);
+                selectedObject = null;
+            });
+            contextMenu.getItems().add(deleteItem);
+            
+            contextMenu.show(canvas, e.getScreenX(), e.getScreenY());
         }
     }
 
@@ -86,6 +108,20 @@ public class SelectMode implements ToolState {
             if (overAny) canvas.setCursorStyle(Cursor.HAND);
             else canvas.setCursorStyle(Cursor.DEFAULT);
             activeZone = ResizeZone.NONE;
+        }
+    }
+
+    @Override
+    public void onKeyPress(KeyEvent e) {
+        if (e.getCode() == KeyCode.DELETE) {
+            if (selectedObject != null) {
+                canvas.removeObject(selectedObject);
+                selectedObject = null;
+                
+                if (contextMenu != null && contextMenu.isShowing()) {
+                    contextMenu.hide();
+                }
+            }
         }
     }
 

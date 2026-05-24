@@ -14,6 +14,7 @@ import org.example.core.ResizeZone;
 public class SelectMode implements ToolState {
     private final UMLCanvas canvas;
     private BasicObject selectedObject;
+    private org.example.core.lines.RelationshipLine selectedLine;
     private double lastX, lastY;
     private boolean isResizing = false;
     private ResizeZone activeZone = ResizeZone.NONE;
@@ -38,27 +39,50 @@ public class SelectMode implements ToolState {
         }
 
         selectedObject = null;
+        selectedLine = null;
         canvas.clearSelection();
         isResizing = false;
         canvas.notifySelectionChanged(null); // Notify null if clicking empty space
 
         // Traverse backwards to pick front-most object
+        boolean hit = false;
         for (int i = canvas.getObjects().size() - 1; i >= 0; i--) {
             BasicObject obj = canvas.getObjects().get(i);
             if (obj.contains(e.getX(), e.getY())) {
                 selectedObject = obj;
                 obj.setSelected(true);
                 canvas.notifySelectionChanged(obj); // Notify the selected object
+                hit = true;
                 break;
             }
         }
         
-        if (e.getButton() == MouseButton.SECONDARY && selectedObject != null) {
+        // If no object is hit, check lines
+        if (!hit) {
+            for (int i = canvas.getLines().size() - 1; i >= 0; i--) {
+                org.example.core.lines.RelationshipLine line = canvas.getLines().get(i);
+                if (line.contains(e.getX(), e.getY())) {
+                    selectedLine = line;
+                    line.setSelected(true);
+                    // notifySelectionChanged doesn't accept line right now, we can pass null or we need to update signature if properties are shown for lines. Passing null for object tree.
+                    canvas.notifySelectionChanged(null); 
+                    hit = true;
+                    break;
+                }
+            }
+        }
+        
+        if (e.getButton() == MouseButton.SECONDARY && (selectedObject != null || selectedLine != null)) {
             contextMenu = new ContextMenu();
             MenuItem deleteItem = new MenuItem("Delete");
             deleteItem.setOnAction(event -> {
-                canvas.removeObject(selectedObject);
-                selectedObject = null;
+                if (selectedObject != null) {
+                    canvas.removeObject(selectedObject);
+                    selectedObject = null;
+                } else if (selectedLine != null) {
+                    canvas.removeLine(selectedLine);
+                    selectedLine = null;
+                }
             });
             contextMenu.getItems().add(deleteItem);
             
@@ -105,6 +129,14 @@ public class SelectMode implements ToolState {
                     overAny = true; break;
                 }
             }
+            if (!overAny) {
+                for (org.example.core.lines.RelationshipLine line : canvas.getLines()) {
+                    if (line.contains(e.getX(), e.getY())) {
+                        overAny = true; break;
+                    }
+                }
+            }
+            
             if (overAny) canvas.setCursorStyle(Cursor.HAND);
             else canvas.setCursorStyle(Cursor.DEFAULT);
             activeZone = ResizeZone.NONE;
@@ -118,6 +150,12 @@ public class SelectMode implements ToolState {
                 canvas.removeObject(selectedObject);
                 selectedObject = null;
                 
+                if (contextMenu != null && contextMenu.isShowing()) {
+                    contextMenu.hide();
+                }
+            } else if (selectedLine != null) {
+                canvas.removeLine(selectedLine);
+                selectedLine = null;
                 if (contextMenu != null && contextMenu.isShowing()) {
                     contextMenu.hide();
                 }

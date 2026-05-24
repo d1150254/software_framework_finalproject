@@ -26,6 +26,30 @@ public class RelationshipLine implements Drawable {
 
     public Port getStartPort() { return startPort; }
     public Port getEndPort() { return endPort; }
+    
+    private boolean isSelected = false;
+    public void setSelected(boolean selected) { this.isSelected = selected; }
+    public boolean isSelected() { return isSelected; }
+
+    public boolean contains(double mx, double my) {
+        List<Point2D> points = calculateOrthogonalRoute();
+        if (points.size() < 2) return false;
+        
+        double tolerance = 5.0;
+        for (int i = 0; i < points.size() - 1; i++) {
+            Point2D p1 = points.get(i);
+            Point2D p2 = points.get(i + 1);
+            
+            double d1 = Math.hypot(mx - p1.getX(), my - p1.getY());
+            double d2 = Math.hypot(mx - p2.getX(), my - p2.getY());
+            double lineLen = Math.hypot(p2.getX() - p1.getX(), p2.getY() - p1.getY());
+            
+            if (d1 + d2 >= lineLen - tolerance && d1 + d2 <= lineLen + tolerance) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     @Override
     public void draw(GraphicsContext gc) {
@@ -39,7 +63,7 @@ public class RelationshipLine implements Drawable {
         } else {
             gc.setLineDashes(0);
         }
-        gc.setStroke(Color.BLACK);
+        gc.setStroke(isSelected ? Color.BLUE : Color.BLACK);
         gc.setFill(Color.WHITE); // For arrowheads
 
         for (int i = 0; i < points.size() - 1; i++) {
@@ -151,4 +175,3 @@ public class RelationshipLine implements Drawable {
         }
     }
 }
-

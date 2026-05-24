@@ -132,6 +132,16 @@ public class UMLCanvas extends Pane {
         for (BasicObject obj : objects) {
             obj.setSelected(false);
         }
+        for (RelationshipLine line : lines) {
+            line.setSelected(false);
+        }
+    }
+
+    public void removeLine(RelationshipLine line) {
+        if (line == null) return;
+        lines.remove(line);
+        notifySelectionChanged(null);
+        repaint();
     }
 
     public void repaint() {

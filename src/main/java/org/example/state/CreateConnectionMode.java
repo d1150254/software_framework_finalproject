@@ -12,6 +12,7 @@ public class CreateConnectionMode implements ToolState {
     private LineType lineType;
     private Port startPort;
     private double currentMouseX, currentMouseY; // For drawing temp line during drag
+    private BasicObject nearestObject;
 
     public CreateConnectionMode(UMLCanvas canvas, LineType lineType) {
         this.canvas = canvas;
@@ -32,6 +33,7 @@ public class CreateConnectionMode implements ToolState {
         if (startPort != null) {
             currentMouseX = e.getX();
             currentMouseY = e.getY();
+            nearestObject = findNearestObject(currentMouseX, currentMouseY);
         }
     }
 
@@ -51,10 +53,23 @@ public class CreateConnectionMode implements ToolState {
     }
 
     @Override
-    public void onMouseMove(MouseEvent e) { }
+    public void onMouseMove(MouseEvent e) {
+        currentMouseX = e.getX();
+        currentMouseY = e.getY();
+        nearestObject = findNearestObject(currentMouseX, currentMouseY);
+    }
     
     @Override
     public void drawPreview(javafx.scene.canvas.GraphicsContext gc) {
+        if (nearestObject != null) {
+            gc.save();
+            gc.setFill(javafx.scene.paint.Color.BLACK);
+            for (Port p : nearestObject.getPorts()) {
+                gc.fillRect(p.getX() - 3, p.getY() - 3, 6, 6);
+            }
+            gc.restore();
+        }
+
         if (startPort != null) {
             gc.save();
             gc.setGlobalAlpha(0.5);
@@ -64,6 +79,21 @@ public class CreateConnectionMode implements ToolState {
             gc.strokeLine(startPort.getX(), startPort.getY(), currentMouseX, currentMouseY);
             gc.restore();
         }
+    }
+
+    private BasicObject findNearestObject(double mx, double my) {
+        BasicObject nearest = null;
+        double minDist = Double.MAX_VALUE;
+        for (BasicObject obj : canvas.getObjects()) {
+            double cx = obj.getX() + obj.getWidth() / 2.0;
+            double cy = obj.getY() + obj.getHeight() / 2.0;
+            double dist = Math.hypot(mx - cx, my - cy);
+            if (dist < minDist) {
+                minDist = dist;
+                nearest = obj;
+            }
+        }
+        return nearest;
     }
 
     private Port findHoveredPort(double mx, double my) {

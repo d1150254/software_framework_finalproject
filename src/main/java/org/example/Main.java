@@ -19,7 +19,19 @@ import org.example.state.CreateInterfaceMode;
 import org.example.state.SelectMode;
 import org.example.ui.ObjectTreePanel;
 
+import java.util.function.Consumer;
+
 public class Main extends Application {
+
+    private static final int CANVAS_WIDTH = 800;
+    private static final int CANVAS_HEIGHT = 600;
+    private static final int WINDOW_WIDTH = 1100;
+    private static final int WINDOW_HEIGHT = 600;
+    private static final int TOOLBAR_SPACING = 10;
+    private static final String TOOLBAR_STYLE = "-fx-background-color: #f0f0f0; "
+            + "-fx-border-color: #cccccc; "
+            + "-fx-border-width: 0 1 0 0;";
+    private static final String WINDOW_TITLE = "UML Editor - AI Assistant";
 
     public static void main(String[] args) {
         launch(args);
@@ -28,83 +40,87 @@ public class Main extends Application {
     @Override
     public void start(Stage primaryStage) {
         BorderPane root = new BorderPane();
-        
-        // Setup Canvas
-        UMLCanvas canvas = new UMLCanvas(800, 600);
+        UMLCanvas canvas = new UMLCanvas(CANVAS_WIDTH, CANVAS_HEIGHT);
         UMLProjectStore projectStore = new UMLProjectStore();
         ProjectManager projectManager = new ProjectManager(projectStore);
+        VBox toolbar = createToolbar(primaryStage, canvas, projectManager);
+        ObjectTreePanel treePanel = createTreePanel(canvas);
 
-        // Setup Toolbar
-        VBox toolbar = new VBox(10);
-        toolbar.setPadding(new Insets(10));
-        toolbar.setStyle("-fx-background-color: #f0f0f0; -fx-border-color: #cccccc; -fx-border-width: 0 1 0 0;");
-        
+        root.setLeft(toolbar);
+        root.setCenter(canvas);
+        root.setRight(treePanel);
+
+        configureStage(primaryStage, root);
+    }
+
+    private VBox createToolbar(Stage primaryStage, UMLCanvas canvas, ProjectManager projectManager) {
+        VBox toolbar = new VBox(TOOLBAR_SPACING);
+        toolbar.setPadding(new Insets(TOOLBAR_SPACING));
+        toolbar.setStyle(TOOLBAR_STYLE);
+
         ToggleGroup group = new ToggleGroup();
-        
+
         Button btnOpen = new Button("Open");
         Button btnSave = new Button("Save");
-        ToggleButton btnSelect = new ToggleButton("Select");
-        ToggleButton btnClass = new ToggleButton("Class");
-        ToggleButton btnInterface = new ToggleButton("Interface");
-        ToggleButton btnAssoc = new ToggleButton("Association");
-        ToggleButton btnInherit = new ToggleButton("Inheritance");
-        ToggleButton btnImpl = new ToggleButton("Implementation");
-        ToggleButton btnAggreg = new ToggleButton("Aggregation");
-        ToggleButton btnCompos = new ToggleButton("Composition");
-        
-        btnSelect.setToggleGroup(group);
-        btnClass.setToggleGroup(group);
-        btnInterface.setToggleGroup(group);
-        btnAssoc.setToggleGroup(group);
-        btnInherit.setToggleGroup(group);
-        btnImpl.setToggleGroup(group);
-        btnAggreg.setToggleGroup(group);
-        btnCompos.setToggleGroup(group);
+        ToggleButton btnSelect = createToolButton("Select", group,
+                button -> switchToSelectMode(canvas, button));
+        ToggleButton btnClass = createToolButton("Class", group,
+                button -> canvas.setState(new CreateClassMode(canvas)));
+        ToggleButton btnInterface = createToolButton("Interface", group,
+                button -> canvas.setState(new CreateInterfaceMode(canvas)));
+        ToggleButton btnAssoc = createConnectionButton("Association", group, canvas, LineType.ASSOCIATION);
+        ToggleButton btnInherit = createConnectionButton("Inheritance", group, canvas, LineType.INHERITANCE);
+        ToggleButton btnImpl = createConnectionButton("Implementation", group, canvas, LineType.IMPLEMENTATION);
+        ToggleButton btnAggreg = createConnectionButton("Aggregation", group, canvas, LineType.AGGREGATION);
+        ToggleButton btnCompos = createConnectionButton("Composition", group, canvas, LineType.COMPOSITION);
 
         toolbar.getChildren().addAll(
             btnOpen, btnSave,
-            btnSelect, btnClass, btnInterface, 
+            btnSelect, btnClass, btnInterface,
             btnAssoc, btnInherit, btnImpl, btnAggreg, btnCompos
         );
-        
+
         btnOpen.setOnAction(e -> projectManager.openProject(primaryStage, canvas));
         btnSave.setOnAction(e -> projectManager.saveProject(primaryStage, canvas));
-        btnSelect.setOnAction(e -> canvas.setState(new SelectMode(canvas)));
-        btnClass.setOnAction(e -> canvas.setState(new CreateClassMode(canvas)));
-        btnInterface.setOnAction(e -> canvas.setState(new CreateInterfaceMode(canvas)));
-        btnAssoc.setOnAction(e -> canvas.setState(new CreateConnectionMode(canvas, LineType.ASSOCIATION)));
-        btnInherit.setOnAction(e -> canvas.setState(new CreateConnectionMode(canvas, LineType.INHERITANCE)));
-        btnImpl.setOnAction(e -> canvas.setState(new CreateConnectionMode(canvas, LineType.IMPLEMENTATION)));
-        btnAggreg.setOnAction(e -> canvas.setState(new CreateConnectionMode(canvas, LineType.AGGREGATION)));
-        btnCompos.setOnAction(e -> canvas.setState(new CreateConnectionMode(canvas, LineType.COMPOSITION)));
-        
-        // Default state
-        btnSelect.setSelected(true);
-        canvas.setState(new SelectMode(canvas));
-        
-        // Listen to action completed and revert to select mode
-        canvas.setOnActionCompleted(() -> {
-            btnSelect.setSelected(true);
-            canvas.setState(new SelectMode(canvas));
-        });
-        
-        // Ensure buttons have same width
+
+        switchToSelectMode(canvas, btnSelect);
+        canvas.setOnActionCompleted(() -> switchToSelectMode(canvas, btnSelect));
+
         toolbar.getChildren().forEach(node -> {
             if (node instanceof ButtonBase) {
                 ((ButtonBase) node).setMaxWidth(Double.MAX_VALUE);
             }
         });
 
-        // Setup Tree Panel
+        return toolbar;
+    }
+
+    private ToggleButton createConnectionButton(String label, ToggleGroup group, UMLCanvas canvas, LineType lineType) {
+        return createToolButton(label, group,
+                button -> canvas.setState(new CreateConnectionMode(canvas, lineType)));
+    }
+
+    private ToggleButton createToolButton(String label, ToggleGroup group, Consumer<ToggleButton> action) {
+        ToggleButton button = new ToggleButton(label);
+        button.setToggleGroup(group);
+        button.setOnAction(e -> action.accept(button));
+        return button;
+    }
+
+    private ObjectTreePanel createTreePanel(UMLCanvas canvas) {
         ObjectTreePanel treePanel = new ObjectTreePanel(canvas);
         canvas.setSelectionListener(obj -> treePanel.bindObject(obj));
+        return treePanel;
+    }
 
-        root.setLeft(toolbar);
-        root.setCenter(canvas);
-        root.setRight(treePanel);
-        
-        Scene scene = new Scene(root, 1100, 600);
-        primaryStage.setTitle("UML Editor - AI Assistant");
+    private void switchToSelectMode(UMLCanvas canvas, ToggleButton selectButton) {
+        selectButton.setSelected(true);
+        canvas.setState(new SelectMode(canvas));
+    }
+
+    private void configureStage(Stage primaryStage, BorderPane root) {
+        Scene scene = new Scene(root, WINDOW_WIDTH, WINDOW_HEIGHT);
+        primaryStage.setTitle(WINDOW_TITLE);
         primaryStage.setScene(scene);
         primaryStage.show();
     }

@@ -26,6 +26,7 @@ public class RelationshipLine implements Drawable {
 
     public Port getStartPort() { return startPort; }
     public Port getEndPort() { return endPort; }
+    public LineType getLineType() { return lineType; }
     
     private boolean isSelected = false;
     public void setSelected(boolean selected) { this.isSelected = selected; }
@@ -75,7 +76,9 @@ public class RelationshipLine implements Drawable {
         // Reset dashes for arrowhead
         gc.setLineDashes(0);
         
-        drawArrowhead(gc, points.get(points.size() - 2), points.get(points.size() - 1));
+        if (lineType != LineType.ASSOCIATION) {
+            drawArrowhead(gc, points.get(points.size() - 2), points.get(points.size() - 1));
+        }
     }
 
     /**

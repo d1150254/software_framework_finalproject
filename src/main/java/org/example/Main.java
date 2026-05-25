@@ -3,14 +3,12 @@ package org.example;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBase;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.VBox;
-import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import org.example.canvas.UMLCanvas;
 import org.example.core.lines.LineType;
@@ -21,12 +19,7 @@ import org.example.state.CreateInterfaceMode;
 import org.example.state.SelectMode;
 import org.example.ui.ObjectTreePanel;
 
-import java.io.File;
-import java.io.IOException;
-
 public class Main extends Application {
-
-    private File currentProjectFile = null;
 
     public static void main(String[] args) {
         launch(args);
@@ -39,7 +32,8 @@ public class Main extends Application {
         // Setup Canvas
         UMLCanvas canvas = new UMLCanvas(800, 600);
         UMLProjectStore projectStore = new UMLProjectStore();
-        
+        ProjectManager projectManager = new ProjectManager(projectStore);
+
         // Setup Toolbar
         VBox toolbar = new VBox(10);
         toolbar.setPadding(new Insets(10));
@@ -73,8 +67,8 @@ public class Main extends Application {
             btnAssoc, btnInherit, btnImpl, btnAggreg, btnCompos
         );
         
-        btnOpen.setOnAction(e -> openProject(primaryStage, canvas, projectStore));
-        btnSave.setOnAction(e -> saveProject(primaryStage, canvas, projectStore));
+        btnOpen.setOnAction(e -> projectManager.openProject(primaryStage, canvas));
+        btnSave.setOnAction(e -> projectManager.saveProject(primaryStage, canvas));
         btnSelect.setOnAction(e -> canvas.setState(new SelectMode(canvas)));
         btnClass.setOnAction(e -> canvas.setState(new CreateClassMode(canvas)));
         btnInterface.setOnAction(e -> canvas.setState(new CreateInterfaceMode(canvas)));
@@ -113,58 +107,5 @@ public class Main extends Application {
         primaryStage.setTitle("UML Editor - AI Assistant");
         primaryStage.setScene(scene);
         primaryStage.show();
-    }
-
-    private void openProject(Stage owner, UMLCanvas canvas, UMLProjectStore projectStore) {
-        FileChooser fileChooser = createProjectFileChooser("Open UML Project");
-        File file = fileChooser.showOpenDialog(owner);
-        if (file == null) {
-            return;
-        }
-
-        try {
-            projectStore.load(canvas, file.toPath());
-            currentProjectFile = file;
-        } catch (IOException | IllegalArgumentException ex) {
-            showError("Open Failed", "Unable to open the selected UML project file.", ex);
-        }
-    }
-
-    private void saveProject(Stage owner, UMLCanvas canvas, UMLProjectStore projectStore) {
-        File file;
-        if (currentProjectFile != null) {
-            file = currentProjectFile;
-        } else {
-            FileChooser fileChooser = createProjectFileChooser("Save UML Project");
-            fileChooser.setInitialFileName("uml-project.json");
-            file = fileChooser.showSaveDialog(owner);
-            if (file == null) {
-                return;
-            }
-        }
-
-        try {
-            projectStore.save(canvas, file.toPath());
-            currentProjectFile = file;
-        } catch (IOException | IllegalArgumentException ex) {
-            showError("Save Failed", "Unable to save the UML project file.", ex);
-        }
-    }
-
-    private FileChooser createProjectFileChooser(String title) {
-        FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle(title);
-        fileChooser.getExtensionFilters().add(
-            new FileChooser.ExtensionFilter("UML Project JSON", "*.json")
-        );
-        return fileChooser;
-    }
-
-    private void showError(String title, String message, Exception exception) {
-        Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle(title);
-        alert.setHeaderText(message);
-        alert.setContentText(exception.getMessage());
-        alert.showAndWait();
     }
 }

@@ -113,6 +113,15 @@ public class UMLCanvas extends Pane {
         return lines;
     }
 
+    public void replaceDiagram(List<BasicObject> newObjects, List<RelationshipLine> newLines) {
+        objects.clear();
+        lines.clear();
+        objects.addAll(newObjects);
+        lines.addAll(newLines);
+        notifySelectionChanged(null);
+        repaint();
+    }
+
     public void ensureCapacity(double minWidth, double minHeight) {
         boolean changed = false;
         if (minWidth > canvas.getWidth()) {

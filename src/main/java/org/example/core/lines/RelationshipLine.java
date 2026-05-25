@@ -26,6 +26,7 @@ public class RelationshipLine implements Drawable {
 
     public Port getStartPort() { return startPort; }
     public Port getEndPort() { return endPort; }
+    public LineType getLineType() { return lineType; }
     
     private boolean isSelected = false;
     public void setSelected(boolean selected) { this.isSelected = selected; }

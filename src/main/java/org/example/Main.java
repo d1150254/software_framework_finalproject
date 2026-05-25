@@ -26,6 +26,8 @@ import java.io.IOException;
 
 public class Main extends Application {
 
+    private File currentProjectFile = null;
+
     public static void main(String[] args) {
         launch(args);
     }
@@ -122,21 +124,28 @@ public class Main extends Application {
 
         try {
             projectStore.load(canvas, file.toPath());
+            currentProjectFile = file;
         } catch (IOException | IllegalArgumentException ex) {
             showError("Open Failed", "Unable to open the selected UML project file.", ex);
         }
     }
 
     private void saveProject(Stage owner, UMLCanvas canvas, UMLProjectStore projectStore) {
-        FileChooser fileChooser = createProjectFileChooser("Save UML Project");
-        fileChooser.setInitialFileName("uml-project.json");
-        File file = fileChooser.showSaveDialog(owner);
-        if (file == null) {
-            return;
+        File file;
+        if (currentProjectFile != null) {
+            file = currentProjectFile;
+        } else {
+            FileChooser fileChooser = createProjectFileChooser("Save UML Project");
+            fileChooser.setInitialFileName("uml-project.json");
+            file = fileChooser.showSaveDialog(owner);
+            if (file == null) {
+                return;
+            }
         }
 
         try {
             projectStore.save(canvas, file.toPath());
+            currentProjectFile = file;
         } catch (IOException | IllegalArgumentException ex) {
             showError("Save Failed", "Unable to save the UML project file.", ex);
         }

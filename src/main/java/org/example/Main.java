@@ -48,23 +48,21 @@ public class Main extends Application {
         btnSelect.setToggleGroup(group);
         btnClass.setToggleGroup(group);
         btnInterface.setToggleGroup(group);
-        btnAssoc.setToggleGroup(group); // We might not have association in LineType, but let's use what we have
+        btnAssoc.setToggleGroup(group);
         btnInherit.setToggleGroup(group);
         btnImpl.setToggleGroup(group);
         btnAggreg.setToggleGroup(group);
         btnCompos.setToggleGroup(group);
-        
-        // Note: I only have 4 LineTypes: INHERITANCE, IMPLEMENTATION, AGGREGATION, COMPOSITION. 
-        // We'll map accordingly. We can reuse INHERITANCE for association if needed but let's just stick to the 4.
-        
+
         toolbar.getChildren().addAll(
             btnSelect, btnClass, btnInterface, 
-            btnInherit, btnImpl, btnAggreg, btnCompos
+            btnAssoc, btnInherit, btnImpl, btnAggreg, btnCompos
         );
         
         btnSelect.setOnAction(e -> canvas.setState(new SelectMode(canvas)));
         btnClass.setOnAction(e -> canvas.setState(new CreateClassMode(canvas)));
         btnInterface.setOnAction(e -> canvas.setState(new CreateInterfaceMode(canvas)));
+        btnAssoc.setOnAction(e -> canvas.setState(new CreateConnectionMode(canvas, LineType.ASSOCIATION)));
         btnInherit.setOnAction(e -> canvas.setState(new CreateConnectionMode(canvas, LineType.INHERITANCE)));
         btnImpl.setOnAction(e -> canvas.setState(new CreateConnectionMode(canvas, LineType.IMPLEMENTATION)));
         btnAggreg.setOnAction(e -> canvas.setState(new CreateConnectionMode(canvas, LineType.AGGREGATION)));

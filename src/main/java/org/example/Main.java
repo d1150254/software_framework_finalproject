@@ -3,14 +3,12 @@ package org.example;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBase;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.VBox;
-import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import org.example.canvas.UMLCanvas;
 import org.example.core.lines.LineType;
@@ -21,10 +19,31 @@ import org.example.state.CreateInterfaceMode;
 import org.example.state.SelectMode;
 import org.example.ui.ObjectTreePanel;
 
-import java.io.File;
-import java.io.IOException;
+import java.util.function.Consumer;
 
 public class Main extends Application {
+
+    private static final int CANVAS_WIDTH = 800;
+    private static final int CANVAS_HEIGHT = 600;
+    private static final int WINDOW_WIDTH = 1100;
+    private static final int WINDOW_HEIGHT = 600;
+    private static final int TOOLBAR_SPACING = 10;
+    private static final String TOOLBAR_STYLE = "-fx-background-color: #f0f0f0; "
+            + "-fx-border-color: #cccccc; "
+            + "-fx-border-width: 0 1 0 0;";
+    private static final String WINDOW_TITLE = "UML Editor - AI Assistant";
+
+    private static final String LABEL_OPEN = "Open";
+    private static final String LABEL_SAVE = "Save";
+    private static final String LABEL_EXPORT = "Export";
+    private static final String LABEL_SELECT = "Select";
+    private static final String LABEL_CLASS = "Class";
+    private static final String LABEL_INTERFACE = "Interface";
+    private static final String LABEL_ASSOCIATION = "Association";
+    private static final String LABEL_INHERITANCE = "Inheritance";
+    private static final String LABEL_IMPLEMENTATION = "Implementation";
+    private static final String LABEL_AGGREGATION = "Aggregation";
+    private static final String LABEL_COMPOSITION = "Composition";
 
     public static void main(String[] args) {
         launch(args);
@@ -33,129 +52,118 @@ public class Main extends Application {
     @Override
     public void start(Stage primaryStage) {
         BorderPane root = new BorderPane();
-        
-        // Setup Canvas
-        UMLCanvas canvas = new UMLCanvas(800, 600);
+        UMLCanvas canvas = new UMLCanvas(CANVAS_WIDTH, CANVAS_HEIGHT);
         UMLProjectStore projectStore = new UMLProjectStore();
-        
-        // Setup Toolbar
-        VBox toolbar = new VBox(10);
-        toolbar.setPadding(new Insets(10));
-        toolbar.setStyle("-fx-background-color: #f0f0f0; -fx-border-color: #cccccc; -fx-border-width: 0 1 0 0;");
-        
-        ToggleGroup group = new ToggleGroup();
-        
-        Button btnOpen = new Button("Open");
-        Button btnSave = new Button("Save");
-        ToggleButton btnSelect = new ToggleButton("Select");
-        ToggleButton btnClass = new ToggleButton("Class");
-        ToggleButton btnInterface = new ToggleButton("Interface");
-        ToggleButton btnAssoc = new ToggleButton("Association");
-        ToggleButton btnInherit = new ToggleButton("Inheritance");
-        ToggleButton btnImpl = new ToggleButton("Implementation");
-        ToggleButton btnAggreg = new ToggleButton("Aggregation");
-        ToggleButton btnCompos = new ToggleButton("Composition");
-        
-        btnSelect.setToggleGroup(group);
-        btnClass.setToggleGroup(group);
-        btnInterface.setToggleGroup(group);
-        btnAssoc.setToggleGroup(group);
-        btnInherit.setToggleGroup(group);
-        btnImpl.setToggleGroup(group);
-        btnAggreg.setToggleGroup(group);
-        btnCompos.setToggleGroup(group);
+        ProjectManager projectManager = new ProjectManager(projectStore);
+        ExportManager exportManager = new ExportManager();
+        VBox toolbar = createToolbar(primaryStage, canvas, projectManager, exportManager);
+        ObjectTreePanel treePanel = createTreePanel(canvas);
+
+        root.setLeft(toolbar);
+        root.setCenter(canvas);
+        root.setRight(treePanel);
+
+        configureStage(primaryStage, root);
+    }
+
+    private VBox createToolbar(Stage primaryStage, UMLCanvas canvas, ProjectManager projectManager, ExportManager exportManager) {
+        VBox toolbar = initializeToolbarContainer();
+        ToggleGroup toolGroup = new ToggleGroup();
+
+        addProjectManagementButtons(toolbar, primaryStage, canvas, projectManager, exportManager);
+        ToggleButton selectButton = addShapeCreationButtons(toolbar, toolGroup, canvas);
+        addConnectionCreationButtons(toolbar, toolGroup, canvas);
+
+        setupDefaultSelectionBehavior(canvas, selectButton);
+        applyFullWidthStyleToButtons(toolbar);
+
+        return toolbar;
+    }
+
+    private VBox initializeToolbarContainer() {
+        VBox toolbar = new VBox(TOOLBAR_SPACING);
+        toolbar.setPadding(new Insets(TOOLBAR_SPACING));
+        toolbar.setStyle(TOOLBAR_STYLE);
+        return toolbar;
+    }
+
+    private void addProjectManagementButtons(VBox toolbar, Stage primaryStage, UMLCanvas canvas, ProjectManager projectManager, ExportManager exportManager) {
+        Button openButton = new Button(LABEL_OPEN);
+        Button saveButton = new Button(LABEL_SAVE);
+        Button exportButton = new Button(LABEL_EXPORT);
+
+        openButton.setOnAction(event -> projectManager.openProject(primaryStage, canvas));
+        saveButton.setOnAction(event -> projectManager.saveProject(primaryStage, canvas));
+        exportButton.setOnAction(event -> exportManager.exportCanvas(primaryStage, canvas));
+
+        toolbar.getChildren().addAll(openButton, saveButton, exportButton);
+    }
+
+    private ToggleButton addShapeCreationButtons(VBox toolbar, ToggleGroup toolGroup, UMLCanvas canvas) {
+        ToggleButton selectButton = createToolButton(LABEL_SELECT, toolGroup,
+                button -> switchToSelectMode(canvas, button));
+        ToggleButton classButton = createToolButton(LABEL_CLASS, toolGroup,
+                button -> canvas.setState(new CreateClassMode(canvas)));
+        ToggleButton interfaceButton = createToolButton(LABEL_INTERFACE, toolGroup,
+                button -> canvas.setState(new CreateInterfaceMode(canvas)));
+
+        toolbar.getChildren().addAll(selectButton, classButton, interfaceButton);
+        return selectButton;
+    }
+
+    private void addConnectionCreationButtons(VBox toolbar, ToggleGroup toolGroup, UMLCanvas canvas) {
+        ToggleButton associationButton = createConnectionButton(LABEL_ASSOCIATION, toolGroup, canvas, LineType.ASSOCIATION);
+        ToggleButton inheritanceButton = createConnectionButton(LABEL_INHERITANCE, toolGroup, canvas, LineType.INHERITANCE);
+        ToggleButton implementationButton = createConnectionButton(LABEL_IMPLEMENTATION, toolGroup, canvas, LineType.IMPLEMENTATION);
+        ToggleButton aggregationButton = createConnectionButton(LABEL_AGGREGATION, toolGroup, canvas, LineType.AGGREGATION);
+        ToggleButton compositionButton = createConnectionButton(LABEL_COMPOSITION, toolGroup, canvas, LineType.COMPOSITION);
 
         toolbar.getChildren().addAll(
-            btnOpen, btnSave,
-            btnSelect, btnClass, btnInterface, 
-            btnAssoc, btnInherit, btnImpl, btnAggreg, btnCompos
+                associationButton, inheritanceButton, implementationButton,
+                aggregationButton, compositionButton
         );
-        
-        btnOpen.setOnAction(e -> openProject(primaryStage, canvas, projectStore));
-        btnSave.setOnAction(e -> saveProject(primaryStage, canvas, projectStore));
-        btnSelect.setOnAction(e -> canvas.setState(new SelectMode(canvas)));
-        btnClass.setOnAction(e -> canvas.setState(new CreateClassMode(canvas)));
-        btnInterface.setOnAction(e -> canvas.setState(new CreateInterfaceMode(canvas)));
-        btnAssoc.setOnAction(e -> canvas.setState(new CreateConnectionMode(canvas, LineType.ASSOCIATION)));
-        btnInherit.setOnAction(e -> canvas.setState(new CreateConnectionMode(canvas, LineType.INHERITANCE)));
-        btnImpl.setOnAction(e -> canvas.setState(new CreateConnectionMode(canvas, LineType.IMPLEMENTATION)));
-        btnAggreg.setOnAction(e -> canvas.setState(new CreateConnectionMode(canvas, LineType.AGGREGATION)));
-        btnCompos.setOnAction(e -> canvas.setState(new CreateConnectionMode(canvas, LineType.COMPOSITION)));
-        
-        // Default state
-        btnSelect.setSelected(true);
-        canvas.setState(new SelectMode(canvas));
-        
-        // Listen to action completed and revert to select mode
-        canvas.setOnActionCompleted(() -> {
-            btnSelect.setSelected(true);
-            canvas.setState(new SelectMode(canvas));
-        });
-        
-        // Ensure buttons have same width
+    }
+
+    private void setupDefaultSelectionBehavior(UMLCanvas canvas, ToggleButton selectButton) {
+        switchToSelectMode(canvas, selectButton);
+        canvas.setOnActionCompleted(() -> switchToSelectMode(canvas, selectButton));
+    }
+
+    private void applyFullWidthStyleToButtons(VBox toolbar) {
         toolbar.getChildren().forEach(node -> {
             if (node instanceof ButtonBase) {
                 ((ButtonBase) node).setMaxWidth(Double.MAX_VALUE);
             }
         });
+    }
 
-        // Setup Tree Panel
+    private ToggleButton createConnectionButton(String label, ToggleGroup group, UMLCanvas canvas, LineType lineType) {
+        return createToolButton(label, group,
+                button -> canvas.setState(new CreateConnectionMode(canvas, lineType)));
+    }
+
+    private ToggleButton createToolButton(String label, ToggleGroup group, Consumer<ToggleButton> action) {
+        ToggleButton button = new ToggleButton(label);
+        button.setToggleGroup(group);
+        button.setOnAction(e -> action.accept(button));
+        return button;
+    }
+
+    private ObjectTreePanel createTreePanel(UMLCanvas canvas) {
         ObjectTreePanel treePanel = new ObjectTreePanel(canvas);
-        canvas.setSelectionListener(obj -> treePanel.bindObject(obj));
+        canvas.setSelectionListener(treePanel::bindObject);
+        return treePanel;
+    }
 
-        root.setLeft(toolbar);
-        root.setCenter(canvas);
-        root.setRight(treePanel);
-        
-        Scene scene = new Scene(root, 1100, 600);
-        primaryStage.setTitle("UML Editor - AI Assistant");
+    private void switchToSelectMode(UMLCanvas canvas, ToggleButton selectButton) {
+        selectButton.setSelected(true);
+        canvas.setState(new SelectMode(canvas));
+    }
+
+    private void configureStage(Stage primaryStage, BorderPane root) {
+        Scene scene = new Scene(root, WINDOW_WIDTH, WINDOW_HEIGHT);
+        primaryStage.setTitle(WINDOW_TITLE);
         primaryStage.setScene(scene);
         primaryStage.show();
-    }
-
-    private void openProject(Stage owner, UMLCanvas canvas, UMLProjectStore projectStore) {
-        FileChooser fileChooser = createProjectFileChooser("Open UML Project");
-        File file = fileChooser.showOpenDialog(owner);
-        if (file == null) {
-            return;
-        }
-
-        try {
-            projectStore.load(canvas, file.toPath());
-        } catch (IOException | IllegalArgumentException ex) {
-            showError("Open Failed", "Unable to open the selected UML project file.", ex);
-        }
-    }
-
-    private void saveProject(Stage owner, UMLCanvas canvas, UMLProjectStore projectStore) {
-        FileChooser fileChooser = createProjectFileChooser("Save UML Project");
-        fileChooser.setInitialFileName("uml-project.json");
-        File file = fileChooser.showSaveDialog(owner);
-        if (file == null) {
-            return;
-        }
-
-        try {
-            projectStore.save(canvas, file.toPath());
-        } catch (IOException | IllegalArgumentException ex) {
-            showError("Save Failed", "Unable to save the UML project file.", ex);
-        }
-    }
-
-    private FileChooser createProjectFileChooser(String title) {
-        FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle(title);
-        fileChooser.getExtensionFilters().add(
-            new FileChooser.ExtensionFilter("UML Project JSON", "*.json")
-        );
-        return fileChooser;
-    }
-
-    private void showError(String title, String message, Exception exception) {
-        Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle(title);
-        alert.setHeaderText(message);
-        alert.setContentText(exception.getMessage());
-        alert.showAndWait();
     }
 }

@@ -11,265 +11,185 @@ import org.example.core.UMLMethod;
 import org.example.core.lines.LineType;
 import org.example.core.lines.RelationshipLine;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
+import java.util.stream.Collectors;
 
 public class UMLProjectStore {
+    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    private static final String TYPE_CLASS = "CLASS";
+    private static final String TYPE_INTERFACE = "INTERFACE";
+
     public void save(UMLCanvas canvas, Path path) throws IOException {
-        Files.writeString(path, toJson(canvas), StandardCharsets.UTF_8);
+        ProjectSaveData data = createSaveData(canvas);
+        String json = GSON.toJson(data);
+        Files.writeString(path, json, StandardCharsets.UTF_8);
     }
 
     public void load(UMLCanvas canvas, Path path) throws IOException {
         String json = Files.readString(path, StandardCharsets.UTF_8);
-        Object parsed = new JsonParser(json).parse();
-        Map<String, Object> root = asObject(parsed, "root");
+        ProjectSaveData data = GSON.fromJson(json, ProjectSaveData.class);
+        restoreCanvasState(canvas, data);
+    }
 
-        List<BasicObject> objects = readObjects(asArray(root.get("objects"), "objects"));
-        List<RelationshipLine> lines = readLines(asArray(root.get("lines"), "lines"), objects);
+    private ProjectSaveData createSaveData(UMLCanvas canvas) {
+        ProjectSaveData data = new ProjectSaveData();
+        data.objects = canvas.getObjects().stream().map(this::toObjectData).collect(Collectors.toList());
+        data.lines = canvas.getLines().stream().map(line -> toLineData(line, canvas.getObjects())).collect(Collectors.toList());
+        return data;
+    }
+
+    private ObjectData toObjectData(BasicObject object) {
+        ObjectData data = new ObjectData();
+        data.x = object.getX();
+        data.y = object.getY();
+        data.width = object.getWidth();
+        data.height = object.getHeight();
+
+        applyTypeSpecificData(data, object);
+        return data;
+    }
+
+    private void applyTypeSpecificData(ObjectData data, BasicObject object) {
+        if (object instanceof UMLClass umlClass) {
+            data.type = TYPE_CLASS;
+            data.name = umlClass.getName();
+            data.attributes = umlClass.getAttributes().stream().map(UMLAttribute::getName).collect(Collectors.toList());
+            data.methods = umlClass.getMethods().stream().map(UMLMethod::getName).collect(Collectors.toList());
+        } else if (object instanceof UMLInterface umlInterface) {
+            data.type = TYPE_INTERFACE;
+            data.name = umlInterface.getName();
+            data.methods = umlInterface.getMethods().stream().map(UMLMethod::getName).collect(Collectors.toList());
+        }
+    }
+
+    private LineData toLineData(RelationshipLine line, List<BasicObject> objects) {
+        LineData data = new LineData();
+        data.type = line.getLineType().name();
+        data.startObject = objects.indexOf(line.getStartPort().getParent());
+        data.startPort = line.getStartPort().getDirection().name();
+        data.endObject = objects.indexOf(line.getEndPort().getParent());
+        data.endPort = line.getEndPort().getDirection().name();
+        return data;
+    }
+
+    private void restoreCanvasState(UMLCanvas canvas, ProjectSaveData data) {
+        List<BasicObject> objects = new ArrayList<>();
+        if (data.objects != null) {
+            for (ObjectData objectData : data.objects) {
+                objects.add(createBasicObject(objectData));
+            }
+        }
+
+        List<RelationshipLine> lines = new ArrayList<>();
+        if (data.lines != null) {
+            for (LineData lineData : data.lines) {
+                lines.add(createRelationshipLine(lineData, objects));
+            }
+        }
 
         canvas.replaceDiagram(objects, lines);
-        for (BasicObject object : objects) {
-            canvas.ensureCapacity(object.getX() + object.getWidth(), object.getY() + object.getHeight());
-        }
+        ensureCanvasCapacity(canvas, objects);
         canvas.repaint();
     }
 
-    private String toJson(UMLCanvas canvas) {
-        StringBuilder builder = new StringBuilder();
-        builder.append("{\n");
-        builder.append("  \"version\": 1,\n");
-        builder.append("  \"objects\": [\n");
-        appendObjects(builder, canvas.getObjects());
-        builder.append("  ],\n");
-        builder.append("  \"lines\": [\n");
-        appendLines(builder, canvas.getObjects(), canvas.getLines());
-        builder.append("  ]\n");
-        builder.append("}\n");
-        return builder.toString();
-    }
-
-    private void appendObjects(StringBuilder builder, List<BasicObject> objects) {
-        for (int i = 0; i < objects.size(); i++) {
-            BasicObject object = objects.get(i);
-            builder.append("    {\n");
-            appendObjectBase(builder, object);
-            if (object instanceof UMLClass) {
-                appendClassObject(builder, (UMLClass) object);
-            } else if (object instanceof UMLInterface) {
-                appendInterfaceObject(builder, (UMLInterface) object);
-            }
-            builder.append("    }");
-            appendComma(builder, i, objects.size());
+    private void ensureCanvasCapacity(UMLCanvas canvas, List<BasicObject> objects) {
+        for (BasicObject object : objects) {
+            canvas.ensureCapacity(object.getX() + object.getWidth(), object.getY() + object.getHeight());
         }
     }
 
-    private void appendObjectBase(StringBuilder builder, BasicObject object) {
-        builder.append("      \"type\": \"").append(objectType(object)).append("\",\n");
-        builder.append("      \"x\": ").append(object.getX()).append(",\n");
-        builder.append("      \"y\": ").append(object.getY()).append(",\n");
-        builder.append("      \"width\": ").append(object.getWidth()).append(",\n");
-        builder.append("      \"height\": ").append(object.getHeight()).append(",\n");
+    private BasicObject createBasicObject(ObjectData data) {
+        BasicObject object = instantiateBasicObject(data);
+        object.setWidth(data.width);
+        object.setHeight(data.height);
+        return object;
     }
 
-    private void appendClassObject(StringBuilder builder, UMLClass object) {
-        builder.append("      \"name\": \"").append(escape(object.getName())).append("\",\n");
-        appendAttributes(builder, object.getAttributes());
-        builder.append(",\n");
-        appendMethods(builder, object.getMethods());
-        builder.append("\n");
+    private BasicObject instantiateBasicObject(ObjectData data) {
+        if (TYPE_CLASS.equals(data.type)) {
+            return restoreClass(data);
+        } else if (TYPE_INTERFACE.equals(data.type)) {
+            return restoreInterface(data);
+        }
+        throw new IllegalArgumentException("Unsupported object type: " + data.type);
     }
 
-    private void appendInterfaceObject(StringBuilder builder, UMLInterface object) {
-        builder.append("      \"name\": \"").append(escape(object.getName())).append("\",\n");
-        appendMethods(builder, object.getMethods());
-        builder.append("\n");
+    private UMLClass restoreClass(ObjectData data) {
+        UMLClass umlClass = new UMLClass(data.x, data.y);
+        if (data.name != null) umlClass.setName(data.name);
+        if (data.attributes != null) {
+            data.attributes.forEach(attr -> umlClass.addAttribute(new UMLAttribute(attr)));
+        }
+        if (data.methods != null) {
+            data.methods.forEach(method -> umlClass.addMethod(new UMLMethod(method)));
+        }
+        return umlClass;
     }
 
-    private void appendAttributes(StringBuilder builder, List<UMLAttribute> attributes) {
-        builder.append("      \"attributes\": [");
-        for (int i = 0; i < attributes.size(); i++) {
-            builder.append("\"").append(escape(attributes.get(i).getName())).append("\"");
-            if (i < attributes.size() - 1) {
-                builder.append(", ");
-            }
+    private UMLInterface restoreInterface(ObjectData data) {
+        UMLInterface umlInterface = new UMLInterface(data.x, data.y);
+        if (data.name != null) umlInterface.setName(data.name);
+        if (data.methods != null) {
+            data.methods.forEach(method -> umlInterface.addMethod(new UMLMethod(method)));
         }
-        builder.append("]");
+        return umlInterface;
     }
 
-    private void appendMethods(StringBuilder builder, List<UMLMethod> methods) {
-        builder.append("      \"methods\": [");
-        for (int i = 0; i < methods.size(); i++) {
-            builder.append("\"").append(escape(methods.get(i).getName())).append("\"");
-            if (i < methods.size() - 1) {
-                builder.append(", ");
-            }
-        }
-        builder.append("]");
+    private RelationshipLine createRelationshipLine(LineData data, List<BasicObject> objects) {
+        LineType type = LineType.valueOf(data.type);
+        BasicObject startObject = getObjectAtIndex(objects, data.startObject);
+        BasicObject endObject = getObjectAtIndex(objects, data.endObject);
+        Port startPort = findPort(startObject, Direction.valueOf(data.startPort));
+        Port endPort = findPort(endObject, Direction.valueOf(data.endPort));
+        return new RelationshipLine(startPort, endPort, type);
     }
 
-    private void appendLines(StringBuilder builder, List<BasicObject> objects, List<RelationshipLine> lines) {
-        for (int i = 0; i < lines.size(); i++) {
-            RelationshipLine line = lines.get(i);
-            builder.append("    {\n");
-            builder.append("      \"type\": \"").append(line.getLineType().name()).append("\",\n");
-            builder.append("      \"startObject\": ").append(objects.indexOf(line.getStartPort().getParent())).append(",\n");
-            builder.append("      \"startPort\": \"").append(line.getStartPort().getDirection().name()).append("\",\n");
-            builder.append("      \"endObject\": ").append(objects.indexOf(line.getEndPort().getParent())).append(",\n");
-            builder.append("      \"endPort\": \"").append(line.getEndPort().getDirection().name()).append("\"\n");
-            builder.append("    }");
-            appendComma(builder, i, lines.size());
+    private BasicObject getObjectAtIndex(List<BasicObject> objects, int index) {
+        if (index < 0 || index >= objects.size()) {
+            throw new IllegalArgumentException("Invalid object index in line reference: " + index);
         }
+        return objects.get(index);
     }
 
-    private List<BasicObject> readObjects(List<Object> rawObjects) {
-        List<BasicObject> objects = new ArrayList<>();
-        for (Object rawObject : rawObjects) {
-            Map<String, Object> values = asObject(rawObject, "object");
-            String type = asString(values.get("type"), "object.type");
-            BasicObject object = createObject(type, number(values, "x"), number(values, "y"));
-            object.setWidth(number(values, "width"));
-            object.setHeight(number(values, "height"));
-            applyObjectContent(object, values);
-            objects.add(object);
-        }
-        return objects;
-    }
-
-    private BasicObject createObject(String type, double x, double y) {
-        if ("CLASS".equals(type)) {
-            return new UMLClass(x, y);
-        }
-        if ("INTERFACE".equals(type)) {
-            return new UMLInterface(x, y);
-        }
-        throw new IllegalArgumentException("Unsupported object type: " + type);
-    }
-
-    private void applyObjectContent(BasicObject object, Map<String, Object> values) {
-        if (object instanceof UMLClass) {
-            applyClassContent((UMLClass) object, values);
-        } else if (object instanceof UMLInterface) {
-            applyInterfaceContent((UMLInterface) object, values);
-        }
-    }
-
-    private void applyClassContent(UMLClass object, Map<String, Object> values) {
-        object.setName(asString(values.get("name"), "class.name"));
-        for (Object rawAttribute : asArray(values.get("attributes"), "class.attributes")) {
-            object.addAttribute(new UMLAttribute(asString(rawAttribute, "attribute")));
-        }
-        for (Object rawMethod : asArray(values.get("methods"), "class.methods")) {
-            object.addMethod(new UMLMethod(asString(rawMethod, "method")));
-        }
-    }
-
-    private void applyInterfaceContent(UMLInterface object, Map<String, Object> values) {
-        object.setName(asString(values.get("name"), "interface.name"));
-        for (Object rawMethod : asArray(values.get("methods"), "interface.methods")) {
-            object.addMethod(new UMLMethod(asString(rawMethod, "method")));
-        }
-    }
-
-    private List<RelationshipLine> readLines(List<Object> rawLines, List<BasicObject> objects) {
-        List<RelationshipLine> lines = new ArrayList<>();
-        for (Object rawLine : rawLines) {
-            Map<String, Object> values = asObject(rawLine, "line");
-            LineType type = LineType.valueOf(asString(values.get("type"), "line.type"));
-            Port startPort = findPort(objects, index(values, "startObject"), direction(values, "startPort"));
-            Port endPort = findPort(objects, index(values, "endObject"), direction(values, "endPort"));
-            lines.add(new RelationshipLine(startPort, endPort, type));
-        }
-        return lines;
-    }
-
-    private Port findPort(List<BasicObject> objects, int objectIndex, Direction direction) {
-        if (objectIndex < 0 || objectIndex >= objects.size()) {
-            throw new IllegalArgumentException("Line references missing object index: " + objectIndex);
-        }
-        for (Port port : objects.get(objectIndex).getPorts()) {
+    private Port findPort(BasicObject object, Direction direction) {
+        for (Port port : object.getPorts()) {
             if (port.getDirection() == direction) {
                 return port;
             }
         }
-        throw new IllegalArgumentException("Object has no port for direction: " + direction);
+        throw new IllegalArgumentException("Direction port not found: " + direction);
     }
 
-    private Direction direction(Map<String, Object> values, String key) {
-        return Direction.valueOf(asString(values.get(key), key));
+    private static class ProjectSaveData {
+        public int version = 1;
+        public List<ObjectData> objects;
+        public List<LineData> lines;
     }
 
-    private int index(Map<String, Object> values, String key) {
-        return (int) number(values, key);
+    private static class ObjectData {
+        public String type;
+        public double x;
+        public double y;
+        public double width;
+        public double height;
+        public String name;
+        public List<String> attributes;
+        public List<String> methods;
     }
 
-    private double number(Map<String, Object> values, String key) {
-        Object value = values.get(key);
-        if (value instanceof Number) {
-            return ((Number) value).doubleValue();
-        }
-        throw new IllegalArgumentException("Expected number for " + key);
-    }
-
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> asObject(Object value, String label) {
-        if (value instanceof Map) {
-            return (Map<String, Object>) value;
-        }
-        throw new IllegalArgumentException("Expected object for " + label);
-    }
-
-    @SuppressWarnings("unchecked")
-    private List<Object> asArray(Object value, String label) {
-        if (value instanceof List) {
-            return (List<Object>) value;
-        }
-        throw new IllegalArgumentException("Expected array for " + label);
-    }
-
-    private String asString(Object value, String label) {
-        if (value instanceof String) {
-            return (String) value;
-        }
-        throw new IllegalArgumentException("Expected string for " + label);
-    }
-
-    private String objectType(BasicObject object) {
-        if (object instanceof UMLClass) {
-            return "CLASS";
-        }
-        if (object instanceof UMLInterface) {
-            return "INTERFACE";
-        }
-        throw new IllegalArgumentException("Unsupported object class: " + object.getClass().getSimpleName());
-    }
-
-    private String escape(String value) {
-        StringBuilder builder = new StringBuilder();
-        for (int i = 0; i < value.length(); i++) {
-            char current = value.charAt(i);
-            switch (current) {
-                case '"': builder.append("\\\""); break;
-                case '\\': builder.append("\\\\"); break;
-                case '\b': builder.append("\\b"); break;
-                case '\f': builder.append("\\f"); break;
-                case '\n': builder.append("\\n"); break;
-                case '\r': builder.append("\\r"); break;
-                case '\t': builder.append("\\t"); break;
-                default: builder.append(current);
-            }
-        }
-        return builder.toString();
-    }
-
-    private void appendComma(StringBuilder builder, int index, int size) {
-        if (index < size - 1) {
-            builder.append(",");
-        }
-        builder.append("\n");
+    private static class LineData {
+        public String type;
+        public int startObject;
+        public String startPort;
+        public int endObject;
+        public String endPort;
     }
 }

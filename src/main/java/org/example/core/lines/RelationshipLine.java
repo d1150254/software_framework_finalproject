@@ -28,6 +28,10 @@ public class RelationshipLine implements Drawable {
     public Port getEndPort() { return endPort; }
     public LineType getLineType() { return lineType; }
     
+    public List<Point2D> getRoutePoints() {
+        return calculateOrthogonalRoute();
+    }
+    
     private boolean isSelected = false;
     public void setSelected(boolean selected) { this.isSelected = selected; }
     public boolean isSelected() { return isSelected; }

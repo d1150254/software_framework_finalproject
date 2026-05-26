@@ -33,6 +33,18 @@ public class Main extends Application {
             + "-fx-border-width: 0 1 0 0;";
     private static final String WINDOW_TITLE = "UML Editor - AI Assistant";
 
+    private static final String LABEL_OPEN = "Open";
+    private static final String LABEL_SAVE = "Save";
+    private static final String LABEL_EXPORT = "Export";
+    private static final String LABEL_SELECT = "Select";
+    private static final String LABEL_CLASS = "Class";
+    private static final String LABEL_INTERFACE = "Interface";
+    private static final String LABEL_ASSOCIATION = "Association";
+    private static final String LABEL_INHERITANCE = "Inheritance";
+    private static final String LABEL_IMPLEMENTATION = "Implementation";
+    private static final String LABEL_AGGREGATION = "Aggregation";
+    private static final String LABEL_COMPOSITION = "Composition";
+
     public static void main(String[] args) {
         launch(args);
     }
@@ -43,7 +55,8 @@ public class Main extends Application {
         UMLCanvas canvas = new UMLCanvas(CANVAS_WIDTH, CANVAS_HEIGHT);
         UMLProjectStore projectStore = new UMLProjectStore();
         ProjectManager projectManager = new ProjectManager(projectStore);
-        VBox toolbar = createToolbar(primaryStage, canvas, projectManager);
+        ExportManager exportManager = new ExportManager();
+        VBox toolbar = createToolbar(primaryStage, canvas, projectManager, exportManager);
         ObjectTreePanel treePanel = createTreePanel(canvas);
 
         root.setLeft(toolbar);
@@ -53,46 +66,75 @@ public class Main extends Application {
         configureStage(primaryStage, root);
     }
 
-    private VBox createToolbar(Stage primaryStage, UMLCanvas canvas, ProjectManager projectManager) {
+    private VBox createToolbar(Stage primaryStage, UMLCanvas canvas, ProjectManager projectManager, ExportManager exportManager) {
+        VBox toolbar = initializeToolbarContainer();
+        ToggleGroup toolGroup = new ToggleGroup();
+
+        addProjectManagementButtons(toolbar, primaryStage, canvas, projectManager, exportManager);
+        ToggleButton selectButton = addShapeCreationButtons(toolbar, toolGroup, canvas);
+        addConnectionCreationButtons(toolbar, toolGroup, canvas);
+
+        setupDefaultSelectionBehavior(canvas, selectButton);
+        applyFullWidthStyleToButtons(toolbar);
+
+        return toolbar;
+    }
+
+    private VBox initializeToolbarContainer() {
         VBox toolbar = new VBox(TOOLBAR_SPACING);
         toolbar.setPadding(new Insets(TOOLBAR_SPACING));
         toolbar.setStyle(TOOLBAR_STYLE);
+        return toolbar;
+    }
 
-        ToggleGroup group = new ToggleGroup();
+    private void addProjectManagementButtons(VBox toolbar, Stage primaryStage, UMLCanvas canvas, ProjectManager projectManager, ExportManager exportManager) {
+        Button openButton = new Button(LABEL_OPEN);
+        Button saveButton = new Button(LABEL_SAVE);
+        Button exportButton = new Button(LABEL_EXPORT);
 
-        Button btnOpen = new Button("Open");
-        Button btnSave = new Button("Save");
-        ToggleButton btnSelect = createToolButton("Select", group,
+        openButton.setOnAction(event -> projectManager.openProject(primaryStage, canvas));
+        saveButton.setOnAction(event -> projectManager.saveProject(primaryStage, canvas));
+        exportButton.setOnAction(event -> exportManager.exportCanvas(primaryStage, canvas));
+
+        toolbar.getChildren().addAll(openButton, saveButton, exportButton);
+    }
+
+    private ToggleButton addShapeCreationButtons(VBox toolbar, ToggleGroup toolGroup, UMLCanvas canvas) {
+        ToggleButton selectButton = createToolButton(LABEL_SELECT, toolGroup,
                 button -> switchToSelectMode(canvas, button));
-        ToggleButton btnClass = createToolButton("Class", group,
+        ToggleButton classButton = createToolButton(LABEL_CLASS, toolGroup,
                 button -> canvas.setState(new CreateClassMode(canvas)));
-        ToggleButton btnInterface = createToolButton("Interface", group,
+        ToggleButton interfaceButton = createToolButton(LABEL_INTERFACE, toolGroup,
                 button -> canvas.setState(new CreateInterfaceMode(canvas)));
-        ToggleButton btnAssoc = createConnectionButton("Association", group, canvas, LineType.ASSOCIATION);
-        ToggleButton btnInherit = createConnectionButton("Inheritance", group, canvas, LineType.INHERITANCE);
-        ToggleButton btnImpl = createConnectionButton("Implementation", group, canvas, LineType.IMPLEMENTATION);
-        ToggleButton btnAggreg = createConnectionButton("Aggregation", group, canvas, LineType.AGGREGATION);
-        ToggleButton btnCompos = createConnectionButton("Composition", group, canvas, LineType.COMPOSITION);
+
+        toolbar.getChildren().addAll(selectButton, classButton, interfaceButton);
+        return selectButton;
+    }
+
+    private void addConnectionCreationButtons(VBox toolbar, ToggleGroup toolGroup, UMLCanvas canvas) {
+        ToggleButton associationButton = createConnectionButton(LABEL_ASSOCIATION, toolGroup, canvas, LineType.ASSOCIATION);
+        ToggleButton inheritanceButton = createConnectionButton(LABEL_INHERITANCE, toolGroup, canvas, LineType.INHERITANCE);
+        ToggleButton implementationButton = createConnectionButton(LABEL_IMPLEMENTATION, toolGroup, canvas, LineType.IMPLEMENTATION);
+        ToggleButton aggregationButton = createConnectionButton(LABEL_AGGREGATION, toolGroup, canvas, LineType.AGGREGATION);
+        ToggleButton compositionButton = createConnectionButton(LABEL_COMPOSITION, toolGroup, canvas, LineType.COMPOSITION);
 
         toolbar.getChildren().addAll(
-            btnOpen, btnSave,
-            btnSelect, btnClass, btnInterface,
-            btnAssoc, btnInherit, btnImpl, btnAggreg, btnCompos
+                associationButton, inheritanceButton, implementationButton,
+                aggregationButton, compositionButton
         );
+    }
 
-        btnOpen.setOnAction(e -> projectManager.openProject(primaryStage, canvas));
-        btnSave.setOnAction(e -> projectManager.saveProject(primaryStage, canvas));
+    private void setupDefaultSelectionBehavior(UMLCanvas canvas, ToggleButton selectButton) {
+        switchToSelectMode(canvas, selectButton);
+        canvas.setOnActionCompleted(() -> switchToSelectMode(canvas, selectButton));
+    }
 
-        switchToSelectMode(canvas, btnSelect);
-        canvas.setOnActionCompleted(() -> switchToSelectMode(canvas, btnSelect));
-
+    private void applyFullWidthStyleToButtons(VBox toolbar) {
         toolbar.getChildren().forEach(node -> {
             if (node instanceof ButtonBase) {
                 ((ButtonBase) node).setMaxWidth(Double.MAX_VALUE);
             }
         });
-
-        return toolbar;
     }
 
     private ToggleButton createConnectionButton(String label, ToggleGroup group, UMLCanvas canvas, LineType lineType) {
@@ -109,7 +151,7 @@ public class Main extends Application {
 
     private ObjectTreePanel createTreePanel(UMLCanvas canvas) {
         ObjectTreePanel treePanel = new ObjectTreePanel(canvas);
-        canvas.setSelectionListener(obj -> treePanel.bindObject(obj));
+        canvas.setSelectionListener(treePanel::bindObject);
         return treePanel;
     }
 

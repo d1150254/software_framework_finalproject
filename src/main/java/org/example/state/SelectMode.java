@@ -103,10 +103,7 @@ public class SelectMode implements ToolState {
                 selectedObject.setX(selectedObject.getX() + dx);
                 selectedObject.setY(selectedObject.getY() + dy);
             }
-            canvas.ensureCapacity(
-                selectedObject.getX() + selectedObject.getWidth(),
-                selectedObject.getY() + selectedObject.getHeight()
-            );
+            canvas.ensureContentVisible();
         }
 
         lastX = e.getX();

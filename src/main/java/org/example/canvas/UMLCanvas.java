@@ -2,8 +2,6 @@ package org.example.canvas;
 
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
-import javafx.scene.input.MouseEvent;
-import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.Pane;
 import javafx.scene.Cursor;
 import org.example.core.BasicObject;
@@ -14,6 +12,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class UMLCanvas extends Pane {
+    private static final double DEFAULT_CANVAS_WIDTH = 800;
+    private static final double DEFAULT_CANVAS_HEIGHT = 600;
+    private static final double EXPORT_PADDING = 20.0;
+    
     private final Canvas canvas;
     private final List<BasicObject> objects;
     private final List<RelationshipLine> lines;
@@ -97,11 +99,13 @@ public class UMLCanvas extends Pane {
 
     public void addObject(BasicObject obj) {
         objects.add(obj);
+        ensureContentVisible();
         repaint();
     }
 
     public void addLine(RelationshipLine line) {
         lines.add(line);
+        ensureContentVisible();
         repaint();
     }
 
@@ -119,6 +123,7 @@ public class UMLCanvas extends Pane {
         objects.addAll(newObjects);
         lines.addAll(newLines);
         notifySelectionChanged(null);
+        ensureContentVisible();
         repaint();
     }
 
@@ -135,6 +140,49 @@ public class UMLCanvas extends Pane {
         if (changed) {
             setPrefSize(canvas.getWidth(), canvas.getHeight());
         }
+    }
+
+    public void ensureContentVisible() {
+        javafx.geometry.BoundingBox bounds = getContentBounds();
+        ensureCapacity(bounds.getMaxX(), bounds.getMaxY());
+    }
+
+    public javafx.geometry.BoundingBox getContentBounds() {
+        if (objects.isEmpty() && lines.isEmpty()) {
+            return new javafx.geometry.BoundingBox(0, 0, DEFAULT_CANVAS_WIDTH, DEFAULT_CANVAS_HEIGHT);
+        }
+
+        double minX = Double.MAX_VALUE;
+        double minY = Double.MAX_VALUE;
+        double maxX = Double.MIN_VALUE;
+        double maxY = Double.MIN_VALUE;
+
+        for (BasicObject obj : objects) {
+            minX = Math.min(minX, obj.getX());
+            minY = Math.min(minY, obj.getY());
+            maxX = Math.max(maxX, obj.getX() + obj.getWidth());
+            maxY = Math.max(maxY, obj.getY() + obj.getHeight());
+        }
+
+        for (RelationshipLine line : lines) {
+            List<javafx.geometry.Point2D> points = line.getRoutePoints();
+            for (javafx.geometry.Point2D p : points) {
+                minX = Math.min(minX, p.getX());
+                minY = Math.min(minY, p.getY());
+                maxX = Math.max(maxX, p.getX());
+                maxY = Math.max(maxY, p.getY());
+            }
+        }
+
+        minX -= EXPORT_PADDING;
+        minY -= EXPORT_PADDING;
+        maxX += EXPORT_PADDING;
+        maxY += EXPORT_PADDING;
+
+        minX = Math.max(0, minX);
+        minY = Math.max(0, minY);
+
+        return new javafx.geometry.BoundingBox(minX, minY, maxX - minX, maxY - minY);
     }
 
     public void clearSelection() {

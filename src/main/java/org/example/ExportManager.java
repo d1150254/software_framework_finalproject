@@ -1,8 +1,6 @@
 package org.example;
 
 import javafx.embed.swing.SwingFXUtils;
-import javafx.geometry.BoundingBox;
-import javafx.scene.SnapshotParameters;
 import javafx.scene.control.Alert;
 import javafx.scene.image.WritableImage;
 import javafx.stage.FileChooser;
@@ -51,20 +49,7 @@ public class ExportManager {
 
     private WritableImage captureCanvasSnapshot(UMLCanvas canvas) {
         canvas.clearSelection();
-        canvas.ensureContentVisible();
-        canvas.repaint();
-
-        BoundingBox bounds = canvas.getContentBounds();
-        SnapshotParameters params = new SnapshotParameters();
-        params.setViewport(new javafx.geometry.Rectangle2D(
-                bounds.getMinX(), bounds.getMinY(), bounds.getWidth(), bounds.getHeight()
-        ));
-
-        WritableImage targetImage = new WritableImage(
-                (int) Math.ceil(bounds.getWidth()),
-                (int) Math.ceil(bounds.getHeight())
-        );
-        return canvas.snapshot(params, targetImage);
+        return canvas.createContentSnapshot();
     }
 
     private void processExportAction(WritableImage snapshot, File targetFile) throws IOException {

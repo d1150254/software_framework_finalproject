@@ -1,7 +1,11 @@
 package org.example.canvas;
 
+import javafx.geometry.BoundingBox;
+import javafx.geometry.Rectangle2D;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.SnapshotParameters;
+import javafx.scene.image.WritableImage;
 import javafx.scene.layout.Pane;
 import javafx.scene.Cursor;
 import org.example.core.BasicObject;
@@ -143,19 +147,33 @@ public class UMLCanvas extends Pane {
     }
 
     public void ensureContentVisible() {
-        javafx.geometry.BoundingBox bounds = getContentBounds();
+        BoundingBox bounds = getContentBounds();
         ensureCapacity(bounds.getMaxX(), bounds.getMaxY());
     }
 
-    public javafx.geometry.BoundingBox getContentBounds() {
+    public WritableImage createContentSnapshot() {
+        ensureContentVisible();
+        repaint();
+
+        BoundingBox bounds = getContentBounds();
+        int width = Math.max(1, (int) Math.ceil(bounds.getWidth()));
+        int height = Math.max(1, (int) Math.ceil(bounds.getHeight()));
+
+        SnapshotParameters params = new SnapshotParameters();
+        params.setViewport(new Rectangle2D(bounds.getMinX(), bounds.getMinY(), width, height));
+
+        return canvas.snapshot(params, new WritableImage(width, height));
+    }
+
+    public BoundingBox getContentBounds() {
         if (objects.isEmpty() && lines.isEmpty()) {
-            return new javafx.geometry.BoundingBox(0, 0, DEFAULT_CANVAS_WIDTH, DEFAULT_CANVAS_HEIGHT);
+            return new BoundingBox(0, 0, DEFAULT_CANVAS_WIDTH, DEFAULT_CANVAS_HEIGHT);
         }
 
         double minX = Double.MAX_VALUE;
         double minY = Double.MAX_VALUE;
-        double maxX = Double.MIN_VALUE;
-        double maxY = Double.MIN_VALUE;
+        double maxX = -Double.MAX_VALUE;
+        double maxY = -Double.MAX_VALUE;
 
         for (BasicObject obj : objects) {
             minX = Math.min(minX, obj.getX());
@@ -165,13 +183,11 @@ public class UMLCanvas extends Pane {
         }
 
         for (RelationshipLine line : lines) {
-            List<javafx.geometry.Point2D> points = line.getRoutePoints();
-            for (javafx.geometry.Point2D p : points) {
-                minX = Math.min(minX, p.getX());
-                minY = Math.min(minY, p.getY());
-                maxX = Math.max(maxX, p.getX());
-                maxY = Math.max(maxY, p.getY());
-            }
+            BoundingBox lineBounds = line.getVisualBounds();
+            minX = Math.min(minX, lineBounds.getMinX());
+            minY = Math.min(minY, lineBounds.getMinY());
+            maxX = Math.max(maxX, lineBounds.getMaxX());
+            maxY = Math.max(maxY, lineBounds.getMaxY());
         }
 
         minX -= EXPORT_PADDING;
@@ -182,7 +198,7 @@ public class UMLCanvas extends Pane {
         minX = Math.max(0, minX);
         minY = Math.max(0, minY);
 
-        return new javafx.geometry.BoundingBox(minX, minY, maxX - minX, maxY - minY);
+        return new BoundingBox(minX, minY, maxX - minX, maxY - minY);
     }
 
     public void clearSelection() {

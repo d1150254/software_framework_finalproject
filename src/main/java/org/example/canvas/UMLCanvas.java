@@ -8,6 +8,10 @@ import javafx.scene.SnapshotParameters;
 import javafx.scene.image.WritableImage;
 import javafx.scene.layout.Pane;
 import javafx.scene.Cursor;
+import javafx.animation.AnimationTimer;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.effect.DropShadow;
+import javafx.scene.paint.Color;
 import org.example.core.BasicObject;
 import org.example.core.lines.RelationshipLine;
 import org.example.state.ToolState;
@@ -27,6 +31,10 @@ public class UMLCanvas extends Pane {
     private ToolState currentState;
     
     private Runnable onActionCompleted;
+    private ScrollPane scrollPane;
+    private AnimationTimer autoScrollTimer;
+    private double scrollMouseX;
+    private double scrollMouseY;
 
     public interface SelectionListener {
         void onSelectionChanged(BasicObject selectedObject);
@@ -42,6 +50,8 @@ public class UMLCanvas extends Pane {
 
         this.setFocusTraversable(true);
         canvas.setFocusTraversable(true);
+        this.setStyle("-fx-background-color: white;");
+        this.setEffect(new DropShadow(10, Color.BLACK));
 
         canvas.setOnMousePressed(e -> { 
             this.requestFocus();
@@ -75,6 +85,82 @@ public class UMLCanvas extends Pane {
 
     public void setState(ToolState state) {
         this.currentState = state;
+    }
+
+    public void setScrollPane(ScrollPane scrollPane) {
+        this.scrollPane = scrollPane;
+    }
+    
+    public void updateAutoScrollPosition(double mouseX, double mouseY) {
+        this.scrollMouseX = mouseX;
+        this.scrollMouseY = mouseY;
+        if (autoScrollTimer == null) {
+            autoScrollTimer = new AnimationTimer() {
+                @Override
+                public void handle(long now) {
+                    performAutoScroll();
+                }
+            };
+            autoScrollTimer.start();
+        }
+    }
+    
+    public void stopAutoScroll() {
+        if (autoScrollTimer != null) {
+            autoScrollTimer.stop();
+            autoScrollTimer = null;
+        }
+    }
+    
+    private void performAutoScroll() {
+        if (scrollPane == null) return;
+        
+        double viewportWidth = scrollPane.getViewportBounds().getWidth();
+        double viewportHeight = scrollPane.getViewportBounds().getHeight();
+        if (viewportWidth == 0 || viewportHeight == 0) return;
+        
+        double canvasWidth = getWidth();
+        double canvasHeight = getHeight();
+        
+        double hValue = scrollPane.getHvalue();
+        double vValue = scrollPane.getVvalue();
+        
+        double visibleX = hValue * Math.max(0, canvasWidth - viewportWidth);
+        double visibleY = vValue * Math.max(0, canvasHeight - viewportHeight);
+        
+        double margin = 40.0;
+        double scrollSpeed = 5.0;
+        
+        boolean scrolled = false;
+        
+        if (scrollMouseX > visibleX + viewportWidth - margin) {
+            visibleX += scrollSpeed;
+            scrolled = true;
+        } else if (scrollMouseX < visibleX + margin) {
+            visibleX -= scrollSpeed;
+            scrolled = true;
+        }
+        
+        if (scrollMouseY > visibleY + viewportHeight - margin) {
+            visibleY += scrollSpeed;
+            scrolled = true;
+        } else if (scrollMouseY < visibleY + margin) {
+            visibleY -= scrollSpeed;
+            scrolled = true;
+        }
+        
+        if (scrolled) {
+            ensureCapacity(Math.max(scrollMouseX + 100, visibleX + viewportWidth), Math.max(scrollMouseY + 100, visibleY + viewportHeight));
+            canvasWidth = getWidth();
+            canvasHeight = getHeight();
+            
+            if (canvasWidth > viewportWidth) {
+                scrollPane.setHvalue(Math.max(0, Math.min(1, visibleX / (canvasWidth - viewportWidth))));
+            }
+            if (canvasHeight > viewportHeight) {
+                scrollPane.setVvalue(Math.max(0, Math.min(1, visibleY / (canvasHeight - viewportHeight))));
+            }
+        }
     }
 
     public void setOnActionCompleted(Runnable onActionCompleted) {

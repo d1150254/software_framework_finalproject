@@ -100,9 +100,12 @@ public class SelectMode implements ToolState {
             if (isResizing) {
                 selectedObject.resize(activeZone, dx, dy);
             } else {
-                selectedObject.setX(selectedObject.getX() + dx);
-                selectedObject.setY(selectedObject.getY() + dy);
+                double newX = Math.max(0, selectedObject.getX() + dx);
+                double newY = Math.max(0, selectedObject.getY() + dy);
+                selectedObject.setX(newX);
+                selectedObject.setY(newY);
             }
+            canvas.updateAutoScrollPosition(e.getX(), e.getY());
             canvas.ensureContentVisible();
         }
 
@@ -113,6 +116,7 @@ public class SelectMode implements ToolState {
     @Override
     public void onMouseRelease(MouseEvent e) {
         isResizing = false;
+        canvas.stopAutoScroll();
     }
 
     @Override

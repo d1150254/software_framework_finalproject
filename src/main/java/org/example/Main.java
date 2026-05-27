@@ -7,6 +7,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBase;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
@@ -59,11 +60,21 @@ public class Main extends Application {
         VBox toolbar = createToolbar(primaryStage, canvas, projectManager, exportManager);
         ObjectTreePanel treePanel = createTreePanel(canvas);
 
+        ScrollPane scrollPane = createScrollPane(canvas);
+
         root.setLeft(toolbar);
-        root.setCenter(canvas);
+        root.setCenter(scrollPane);
         root.setRight(treePanel);
 
         configureStage(primaryStage, root);
+    }
+
+    private ScrollPane createScrollPane(UMLCanvas canvas) {
+        ScrollPane scrollPane = new ScrollPane(canvas);
+        scrollPane.setStyle("-fx-background-color: #555555; -fx-control-inner-background: #555555;");
+        scrollPane.setPannable(false);
+        canvas.setScrollPane(scrollPane);
+        return scrollPane;
     }
 
     private VBox createToolbar(Stage primaryStage, UMLCanvas canvas, ProjectManager projectManager, ExportManager exportManager) {

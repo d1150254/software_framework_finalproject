@@ -26,15 +26,34 @@ public class UMLInterface extends BasicObject {
     public void removeMethod(UMLMethod method) { methods.remove(method); }
 
     /**
-     * Adjusts the height of the interface dynamically to ensure text fits inside.
+     * Adjusts the sizes dynamically to ensure text fits inside.
      */
-    public void adjustHeight() {
+    public void adjustSize() {
         int maxLines = methods.size() + 1; // including <<interface>> string and name
         double requiredLayerHeight = maxLines * 15 + 20;
         double totalRequiredHeight = requiredLayerHeight * 2;
         
         if (this.height < totalRequiredHeight) {
             this.height = totalRequiredHeight;
+        }
+
+        double maxTextWidth = 100.0;
+        javafx.scene.text.Text textNode = new javafx.scene.text.Text();
+        
+        textNode.setText("<<interface>>");
+        maxTextWidth = Math.max(maxTextWidth, textNode.getLayoutBounds().getWidth() + 20);
+        
+        textNode.setText(name);
+        maxTextWidth = Math.max(maxTextWidth, textNode.getLayoutBounds().getWidth() + 20);
+
+        for (UMLMethod method : methods) {
+            textNode.setText(method.getDisplayText());
+            maxTextWidth = Math.max(maxTextWidth, textNode.getLayoutBounds().getWidth() + 20);
+        }
+        
+        if (maxTextWidth > 300) maxTextWidth = 300;
+        if (this.width < maxTextWidth) {
+            this.width = maxTextWidth;
         }
     }
 
@@ -54,13 +73,13 @@ public class UMLInterface extends BasicObject {
         gc.setFill(Color.BLACK);
         
         // Name
-        gc.fillText("<<interface>>", x + 5, y + 15);
-        gc.fillText(name, x + 5, y + 30);
+        gc.fillText("<<interface>>", x + 5, y + 15, width - 10);
+        gc.fillText(name, x + 5, y + 30, width - 10);
         
         // Methods
         double currentY = y + layerHeight + 15;
         for (UMLMethod method : methods) {
-            gc.fillText(method.getName(), x + 5, currentY);
+            gc.fillText(method.getDisplayText(), x + 5, currentY, width - 10);
             currentY += 15;
             if (currentY > y + height) break;
         }

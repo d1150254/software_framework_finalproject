@@ -31,16 +31,35 @@ public class UMLClass extends BasicObject {
     public void removeMethod(UMLMethod method) { methods.remove(method); }
 
     /**
-     * Adjusts the height of the class dynamically to ensure text fits inside.
+     * Adjusts the sizes dynamically to ensure text fits inside.
      */
-    public void adjustHeight() {
+    public void adjustSize() {
         int maxLines = Math.max(attributes.size(), methods.size());
         double requiredLayerHeight = maxLines * 15 + 20;
         double totalRequiredHeight = requiredLayerHeight * 3;
         
         if (this.height < totalRequiredHeight) {
             this.height = totalRequiredHeight;
-            // Also update ports by setting coordinates to trigger redraw correctly
+        }
+
+        double maxTextWidth = 100.0;
+        javafx.scene.text.Text textNode = new javafx.scene.text.Text();
+        
+        textNode.setText(name);
+        maxTextWidth = Math.max(maxTextWidth, textNode.getLayoutBounds().getWidth() + 20);
+
+        for (UMLAttribute attr : attributes) {
+            textNode.setText(attr.getDisplayText());
+            maxTextWidth = Math.max(maxTextWidth, textNode.getLayoutBounds().getWidth() + 20);
+        }
+        for (UMLMethod method : methods) {
+            textNode.setText(method.getDisplayText());
+            maxTextWidth = Math.max(maxTextWidth, textNode.getLayoutBounds().getWidth() + 20);
+        }
+        
+        if (maxTextWidth > 300) maxTextWidth = 300;
+        if (this.width < maxTextWidth) {
+            this.width = maxTextWidth;
         }
     }
 
@@ -62,12 +81,12 @@ public class UMLClass extends BasicObject {
         gc.setFill(Color.BLACK);
         
         // Name
-        gc.fillText(name, x + 5, y + 15);
+        gc.fillText(name, x + 5, y + 15, width - 10);
         
         // Attributes
         double currentY = y + layerHeight + 15;
         for (UMLAttribute attr : attributes) {
-            gc.fillText(attr.getName(), x + 5, currentY);
+            gc.fillText(attr.getDisplayText(), x + 5, currentY, width - 10);
             currentY += 15;
             if (currentY > y + 2 * layerHeight) break;
         }
@@ -75,7 +94,7 @@ public class UMLClass extends BasicObject {
         // Methods
         currentY = y + 2 * layerHeight + 15;
         for (UMLMethod method : methods) {
-            gc.fillText(method.getName(), x + 5, currentY);
+            gc.fillText(method.getDisplayText(), x + 5, currentY, width - 10);
             currentY += 15;
             if (currentY > y + height) break;
         }

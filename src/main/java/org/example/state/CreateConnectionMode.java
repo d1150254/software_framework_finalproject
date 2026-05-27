@@ -34,11 +34,13 @@ public class CreateConnectionMode implements ToolState {
             currentMouseX = e.getX();
             currentMouseY = e.getY();
             nearestObject = findNearestObject(currentMouseX, currentMouseY);
+            canvas.updateAutoScrollPosition(e.getX(), e.getY());
         }
     }
 
     @Override
     public void onMouseRelease(MouseEvent e) {
+        canvas.stopAutoScroll();
         if (startPort != null) {
             Port endPort = findHoveredPort(e.getX(), e.getY());
             // Prevent self-connection and valid target

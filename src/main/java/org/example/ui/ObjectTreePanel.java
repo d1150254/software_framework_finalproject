@@ -8,9 +8,23 @@ import org.example.canvas.UMLCanvas;
 import org.example.core.*;
 
 public class ObjectTreePanel extends VBox {
-    private TreeView<String> treeView;
+    private static final String CAT_ATTRIBUTES = "Attributes";
+    private static final String CAT_METHODS = "Methods";
+    private static final String DEFAULT_ATTR_TEMPLATE = "+ newAttr: String";
+    private static final String DEFAULT_METHOD_TEMPLATE = "+ newMethod(): void";
+    private static final String DEFAULT_NEW_ITEM = "New Item";
+    private static final String NODE_ROOT = "Root";
+    private static final String MENU_ADD_ITEM = "Add Item";
+    private static final String MENU_DELETE = "Delete";
+    private static final String ERR_TITLE = "輸入格式錯誤";
+    private static final int INDEX_NAME = 0;
+    private static final int INDEX_ATTRIBUTES = 1;
+    private static final int INDEX_METHODS_CLASS = 2;
+    private static final int INDEX_METHODS_INTERFACE = 1;
+
+    private final TreeView<String> treeView;
     private BasicObject currentObject;
-    private UMLCanvas canvas;
+    private final UMLCanvas canvas;
 
     public ObjectTreePanel(UMLCanvas canvas) {
         this.canvas = canvas;
@@ -36,93 +50,90 @@ public class ObjectTreePanel extends VBox {
             return;
         }
         
-        TreeItem<String> root = new TreeItem<>("Root");
+        TreeItem<String> root = new TreeItem<>(NODE_ROOT);
         
-        if (obj instanceof UMLClass) {
-            UMLClass c = (UMLClass) obj;
-            
-            TreeItem<String> nameItem = new TreeItem<>(c.getName());
-            
-            TreeItem<String> attrRoot = new TreeItem<>("Attributes");
-            for (UMLAttribute attr : c.getAttributes()) {
-                attrRoot.getChildren().add(new TreeItem<>(attr.getName()));
-            }
-            
-            TreeItem<String> methodRoot = new TreeItem<>("Methods");
-            for (UMLMethod method : c.getMethods()) {
-                methodRoot.getChildren().add(new TreeItem<>(method.getName()));
-            }
-            
-            root.getChildren().addAll(nameItem, attrRoot, methodRoot);
-        } else if (obj instanceof UMLInterface) {
-            UMLInterface i = (UMLInterface) obj;
-            
-            TreeItem<String> nameItem = new TreeItem<>(i.getName());
-            
-            TreeItem<String> methodRoot = new TreeItem<>("Methods");
-            for (UMLMethod method : i.getMethods()) {
-                methodRoot.getChildren().add(new TreeItem<>(method.getName()));
-            }
-            
-            root.getChildren().addAll(nameItem, methodRoot);
+        if (obj instanceof UMLClass umlClass) {
+            bindClassModel(umlClass, root);
+        } else if (obj instanceof UMLInterface umlInterface) {
+            bindInterfaceModel(umlInterface, root);
         }
         
-        root.setExpanded(true);
-        for (TreeItem<String> child : root.getChildren()) {
-            child.setExpanded(true);
-        }
-        
+        expandAllNodes(root);
         treeView.setRoot(root);
+    }
+
+    private void bindClassModel(UMLClass umlClass, TreeItem<String> root) {
+        TreeItem<String> nameItem = new TreeItem<>(umlClass.getName());
+        
+        TreeItem<String> attrRoot = new TreeItem<>(CAT_ATTRIBUTES);
+        umlClass.getAttributes().forEach(attr -> attrRoot.getChildren().add(new TreeItem<>(attr.getDisplayText())));
+        
+        TreeItem<String> methodRoot = new TreeItem<>(CAT_METHODS);
+        umlClass.getMethods().forEach(method -> methodRoot.getChildren().add(new TreeItem<>(method.getDisplayText())));
+        
+        root.getChildren().add(nameItem);
+        root.getChildren().add(attrRoot);
+        root.getChildren().add(methodRoot);
+    }
+
+    private void bindInterfaceModel(UMLInterface umlInterface, TreeItem<String> root) {
+        TreeItem<String> nameItem = new TreeItem<>(umlInterface.getName());
+        
+        TreeItem<String> methodRoot = new TreeItem<>(CAT_METHODS);
+        umlInterface.getMethods().forEach(method -> methodRoot.getChildren().add(new TreeItem<>(method.getDisplayText())));
+        
+        root.getChildren().add(nameItem);
+        root.getChildren().add(methodRoot);
+    }
+
+    private void expandAllNodes(TreeItem<String> root) {
+        root.setExpanded(true);
+        root.getChildren().forEach(child -> child.setExpanded(true));
     }
     
     private void updateModelAndCanvas() {
-        if (currentObject == null) return;
+        if (currentObject == null || treeView.getRoot() == null) return;
         
         TreeItem<String> root = treeView.getRoot();
-        if (root == null) return;
         
-        if (currentObject instanceof UMLClass) {
-            UMLClass c = (UMLClass) currentObject;
-            
-            String newName = root.getChildren().get(0).getValue();
-            c.setName(newName);
-            
-            c.getAttributes().clear();
-            TreeItem<String> attrRoot = root.getChildren().get(1);
-            for (TreeItem<String> attrItem : attrRoot.getChildren()) {
-                c.addAttribute(new UMLAttribute(attrItem.getValue()));
-            }
-            
-            c.getMethods().clear();
-            TreeItem<String> methodRoot = root.getChildren().get(2);
-            for (TreeItem<String> methodItem : methodRoot.getChildren()) {
-                c.addMethod(new UMLMethod(methodItem.getValue()));
-            }
-            
-            c.adjustHeight();
-        } else if (currentObject instanceof UMLInterface) {
-            UMLInterface i = (UMLInterface) currentObject;
-            
-            String newName = root.getChildren().get(0).getValue();
-            i.setName(newName);
-            
-            i.getMethods().clear();
-            TreeItem<String> methodRoot = root.getChildren().get(1);
-            for (TreeItem<String> methodItem : methodRoot.getChildren()) {
-                i.addMethod(new UMLMethod(methodItem.getValue()));
-            }
-            
-            i.adjustHeight();
+        if (currentObject instanceof UMLClass umlClass) {
+            updateClassFromTree(umlClass, root);
+        } else if (currentObject instanceof UMLInterface umlInterface) {
+            updateInterfaceFromTree(umlInterface, root);
         }
         
         canvas.repaint();
     }
 
+    private void updateClassFromTree(UMLClass umlClass, TreeItem<String> root) {
+        umlClass.setName(root.getChildren().get(INDEX_NAME).getValue());
+        
+        umlClass.getAttributes().clear();
+        TreeItem<String> attrRoot = root.getChildren().get(INDEX_ATTRIBUTES);
+        attrRoot.getChildren().forEach(item -> umlClass.addAttribute(UMLAttribute.parse(item.getValue())));
+        
+        umlClass.getMethods().clear();
+        TreeItem<String> methodRoot = root.getChildren().get(INDEX_METHODS_CLASS);
+        methodRoot.getChildren().forEach(item -> umlClass.addMethod(UMLMethod.parse(item.getValue())));
+
+        umlClass.adjustSize();
+    }
+
+    private void updateInterfaceFromTree(UMLInterface umlInterface, TreeItem<String> root) {
+        umlInterface.setName(root.getChildren().get(INDEX_NAME).getValue());
+        
+        umlInterface.getMethods().clear();
+        TreeItem<String> methodRoot = root.getChildren().get(INDEX_METHODS_INTERFACE);
+        methodRoot.getChildren().forEach(item -> umlInterface.addMethod(UMLMethod.parse(item.getValue())));
+        
+        umlInterface.adjustSize();
+    }
+
     private class PropertyTreeCell extends TextFieldTreeCell<String> {
-        private ContextMenu contextMenu = new ContextMenu();
+        private final ContextMenu cellContextMenu = new ContextMenu();
         
         public PropertyTreeCell() {
-            super(new StringConverter<String>() {
+            super(new StringConverter<>() {
                 @Override public String toString(String object) { return object; }
                 @Override public String fromString(String string) { return string; }
             });
@@ -133,59 +144,127 @@ public class ObjectTreePanel extends VBox {
             super.updateItem(item, empty);
             
             if (empty || item == null) {
-                setText(null);
+                clearCell();
+                return;
+            }
+            setupCellMenuAndEditability();
+        }
+
+        private void clearCell() {
+            setText(null);
+            setContextMenu(null);
+        }
+
+        private void setupCellMenuAndEditability() {
+            TreeItem<String> treeItem = getTreeItem();
+            TreeItem<String> root = getTreeView().getRoot();
+            
+            if (isCategoryNode(treeItem, root)) {
+                setupCategoryNode(treeItem);
+            } else {
+                setupLeafNode(treeItem, root);
+            }
+        }
+
+        private boolean isCategoryNode(TreeItem<String> item, TreeItem<String> root) {
+            return item.getParent() == root && !root.getChildren().isEmpty() && item != root.getChildren().get(INDEX_NAME);
+        }
+
+        private void setupCategoryNode(TreeItem<String> treeItem) {
+            MenuItem addItem = new MenuItem(MENU_ADD_ITEM);
+            addItem.setOnAction(e -> handleAddItemAction(treeItem));
+            cellContextMenu.getItems().setAll(addItem);
+            setContextMenu(cellContextMenu);
+            setEditable(false);
+        }
+
+        private void handleAddItemAction(TreeItem<String> treeItem) {
+            String category = treeItem.getValue();
+            String template = getTemplateForCategory(category);
+            treeItem.getChildren().add(new TreeItem<>(template));
+            treeItem.setExpanded(true);
+            updateModelAndCanvas();
+        }
+
+        private String getTemplateForCategory(String category) {
+            if (CAT_ATTRIBUTES.equals(category)) return DEFAULT_ATTR_TEMPLATE;
+            if (CAT_METHODS.equals(category)) return DEFAULT_METHOD_TEMPLATE;
+            return DEFAULT_NEW_ITEM;
+        }
+
+        private void setupLeafNode(TreeItem<String> treeItem, TreeItem<String> root) {
+            boolean isNameNode = isNodeNameProperty(treeItem, root);
+            
+            if (isNameNode) {
                 setContextMenu(null);
             } else {
-                TreeItem<String> treeItem = getTreeItem();
-                TreeItem<String> root = getTreeView().getRoot();
-                
-                // Root's child 0 is Name. Category roots are the other children of Root.
-                boolean isCategory = (treeItem.getParent() == root && !root.getChildren().isEmpty() && treeItem != root.getChildren().get(0));
-                
-                if (isCategory) {
-                    MenuItem addItem = new MenuItem("Add Item");
-                    addItem.setOnAction(e -> {
-                        treeItem.getChildren().add(new TreeItem<>("New Item"));
-                        treeItem.setExpanded(true);
-                        updateModelAndCanvas();
-                    });
-                    contextMenu.getItems().setAll(addItem);
-                    setContextMenu(contextMenu);
-                    setEditable(false);
-                } else {
-                    MenuItem deleteItem = new MenuItem("Delete");
-                    deleteItem.setOnAction(e -> {
-                        treeItem.getParent().getChildren().remove(treeItem);
-                        updateModelAndCanvas();
-                    });
-                    
-                    boolean isName = (treeItem.getParent() == root && !root.getChildren().isEmpty() && treeItem == root.getChildren().get(0));
-                    
-                    if (isName) {
-                        setContextMenu(null);
-                    } else {
-                        contextMenu.getItems().setAll(deleteItem);
-                        setContextMenu(contextMenu);
-                    }
-                    setEditable(true);
-                }
+                MenuItem deleteItem = new MenuItem(MENU_DELETE);
+                deleteItem.setOnAction(e -> handleDeleteItemAction(treeItem));
+                cellContextMenu.getItems().setAll(deleteItem);
+                setContextMenu(cellContextMenu);
             }
+            setEditable(true);
+        }
+
+        private boolean isNodeNameProperty(TreeItem<String> treeItem, TreeItem<String> root) {
+            return treeItem.getParent() == root && !root.getChildren().isEmpty() && treeItem == root.getChildren().get(INDEX_NAME);
+        }
+
+        private void handleDeleteItemAction(TreeItem<String> treeItem) {
+            treeItem.getParent().getChildren().remove(treeItem);
+            updateModelAndCanvas();
         }
         
         @Override
         public void commitEdit(String newValue) {
-            if (newValue == null || newValue.trim().isEmpty()) {
+            if (isInvalidInput(newValue)) {
                 cancelEdit();
                 return;
             }
             String trimmed = newValue.trim();
             
-            // Force the underlying TreeItem to reflect the new value immediately 
-            // before the tree model is parsed for synchronization.
+            if (!validateInput(trimmed)) {
+                return;
+            }
+            
             getTreeItem().setValue(trimmed);
             super.commitEdit(trimmed);
-            
             updateModelAndCanvas();
+        }
+
+        private boolean isInvalidInput(String newValue) {
+            return newValue == null || newValue.trim().isEmpty();
+        }
+
+        private boolean validateInput(String trimmed) {
+            try {
+                parseInputByParentCategory(trimmed);
+                return true;
+            } catch (IllegalArgumentException ex) {
+                handleValidationError(ex);
+                return false;
+            }
+        }
+
+        private void parseInputByParentCategory(String trimmed) {
+            TreeItem<String> treeItem = getTreeItem();
+            if (treeItem.getParent() == null) return;
+            
+            String parentValue = treeItem.getParent().getValue();
+            if (CAT_ATTRIBUTES.equals(parentValue)) {
+                UMLAttribute.parse(trimmed);
+            } else if (CAT_METHODS.equals(parentValue)) {
+                UMLMethod.parse(trimmed);
+            }
+        }
+
+        private void handleValidationError(IllegalArgumentException ex) {
+            cancelEdit();
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle(ERR_TITLE);
+            alert.setHeaderText(null);
+            alert.setContentText(ex.getMessage());
+            alert.showAndWait();
         }
     }
 }

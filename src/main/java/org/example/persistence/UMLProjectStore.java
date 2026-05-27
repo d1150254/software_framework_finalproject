@@ -61,12 +61,12 @@ public class UMLProjectStore {
         if (object instanceof UMLClass umlClass) {
             data.type = TYPE_CLASS;
             data.name = umlClass.getName();
-            data.attributes = umlClass.getAttributes().stream().map(UMLAttribute::getName).collect(Collectors.toList());
-            data.methods = umlClass.getMethods().stream().map(UMLMethod::getName).collect(Collectors.toList());
+            data.attributes = umlClass.getAttributes().stream().map(UMLAttribute::getDisplayText).collect(Collectors.toList());
+            data.methods = umlClass.getMethods().stream().map(UMLMethod::getDisplayText).collect(Collectors.toList());
         } else if (object instanceof UMLInterface umlInterface) {
             data.type = TYPE_INTERFACE;
             data.name = umlInterface.getName();
-            data.methods = umlInterface.getMethods().stream().map(UMLMethod::getName).collect(Collectors.toList());
+            data.methods = umlInterface.getMethods().stream().map(UMLMethod::getDisplayText).collect(Collectors.toList());
         }
     }
 
@@ -126,10 +126,10 @@ public class UMLProjectStore {
         UMLClass umlClass = new UMLClass(data.x, data.y);
         if (data.name != null) umlClass.setName(data.name);
         if (data.attributes != null) {
-            data.attributes.forEach(attr -> umlClass.addAttribute(new UMLAttribute(attr)));
+            data.attributes.forEach(attr -> umlClass.addAttribute(UMLAttribute.parse(attr)));
         }
         if (data.methods != null) {
-            data.methods.forEach(method -> umlClass.addMethod(new UMLMethod(method)));
+            data.methods.forEach(method -> umlClass.addMethod(UMLMethod.parse(method)));
         }
         return umlClass;
     }
@@ -138,7 +138,7 @@ public class UMLProjectStore {
         UMLInterface umlInterface = new UMLInterface(data.x, data.y);
         if (data.name != null) umlInterface.setName(data.name);
         if (data.methods != null) {
-            data.methods.forEach(method -> umlInterface.addMethod(new UMLMethod(method)));
+            data.methods.forEach(method -> umlInterface.addMethod(UMLMethod.parse(method)));
         }
         return umlInterface;
     }

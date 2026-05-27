@@ -3,35 +3,26 @@ package org.example.core;
 /**
  * Represents a method (function) entity in a UML Class or Interface.
  */
-public class UMLMethod {
+public class UMLMethod extends UMLMember {
     private static final String DEFAULT_VISIBILITY = "+";
     private static final String PARSE_REGEX = "^([+\\-#~])?\\s*(\\w+)\\s*\\((.*)\\)\\s*(?::\\s*(\\w+))?$";
     private static final String ERROR_MSG_FORMAT = "方法格式錯誤。參考格式：+ name(parameters): returnType";
 
-    private String visibility = DEFAULT_VISIBILITY;
-    private String name;
     private String parameters = "";
     private String returnType = "";
 
     public UMLMethod(String name) {
-        this.name = name;
+        super(name);
+        this.visibility = DEFAULT_VISIBILITY;
     }
 
     public UMLMethod(String visibility, String name, String parameters, String returnType) {
-        this.visibility = visibility;
-        this.name = name;
+        super(visibility, name);
         this.parameters = parameters;
         this.returnType = returnType;
     }
 
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
+    @Override
     public String getDisplayText() {
         StringBuilder sb = new StringBuilder();
         if (visibility != null && !visibility.isEmpty()) sb.append(visibility).append(" ");
@@ -53,10 +44,6 @@ public class UMLMethod {
         }
         
         return extractMethodFromMatcher(matcher);
-    }
-
-    private static boolean isInvalidInput(String input) {
-        return input == null || input.trim().isEmpty();
     }
 
     private static UMLMethod extractMethodFromMatcher(java.util.regex.Matcher matcher) {

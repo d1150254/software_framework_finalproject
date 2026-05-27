@@ -3,35 +3,26 @@ package org.example.core;
 /**
  * Represents an attribute (field) entity in a UML Class.
  */
-public class UMLAttribute {
+public class UMLAttribute extends UMLMember {
     private static final String DEFAULT_VISIBILITY = "+";
     private static final String PARSE_REGEX = "^([+\\-#~])?\\s*(\\w+)\\s*(?::\\s*(\\w+))?\\s*(?:=\\s*(.+))?$";
     private static final String ERROR_MSG_FORMAT = "屬性格式錯誤。參考格式：+ name: type = defaultValue";
 
-    private String visibility = DEFAULT_VISIBILITY;
-    private String name;
     private String type = "";
     private String defaultValue = "";
 
     public UMLAttribute(String name) {
-        this.name = name;
+        super(name);
+        this.visibility = DEFAULT_VISIBILITY;
     }
 
     public UMLAttribute(String visibility, String name, String type, String defaultValue) {
-        this.visibility = visibility;
-        this.name = name;
+        super(visibility, name);
         this.type = type;
         this.defaultValue = defaultValue;
     }
 
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
+    @Override
     public String getDisplayText() {
         StringBuilder sb = new StringBuilder();
         if (visibility != null && !visibility.isEmpty()) sb.append(visibility).append(" ");
@@ -54,10 +45,6 @@ public class UMLAttribute {
         }
         
         return extractAttributeFromMatcher(matcher);
-    }
-
-    private static boolean isInvalidInput(String input) {
-        return input == null || input.trim().isEmpty();
     }
 
     private static UMLAttribute extractAttributeFromMatcher(java.util.regex.Matcher matcher) {
